@@ -16,6 +16,7 @@ class Cutout():
         :param data:  The data to cutout from
         :param position:  The position to cutout from
         :param size:  The size in pixels of the cutout
+        :param wcs:    The WCS object to use with the cutout to return a copy of the WCS object.
 
         :return: Cutout stream
         """
