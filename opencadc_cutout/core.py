@@ -4,7 +4,7 @@ import logging
 from astropy.nddata import Cutout2D
 
 
-class Cutout():
+class Cutout(object):
 
     def __init__(self):
         logging.getLogger().setLevel('INFO')
