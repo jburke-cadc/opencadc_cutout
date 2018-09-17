@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
+import numpy as np
 
 from astropy.nddata import Cutout2D
 
@@ -20,4 +21,5 @@ class Cutout(object):
 
         :return: Cutout stream
         """
-        return Cutout2D(data=data, position=position, size=size, wcs=wcs)
+        sanitized_data = np.squeeze(data)
+        return Cutout2D(data=sanitized_data, position=position, size=size, wcs=wcs)

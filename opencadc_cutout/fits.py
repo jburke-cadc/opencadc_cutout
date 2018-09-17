@@ -20,9 +20,8 @@ class FITSCutout(Cutout):
 
                 # Assume SkyCoord means WCS cutout, so include it in the results
                 if isinstance(position, SkyCoord):
-                    wcs = WCS(hdu.header)
-                    logging.info('\n\nNaxis: {}\n\n'.format(wcs.naxis))
+                    wcs = WCS(header=hdu.header, naxis=2)
                 else:
-                    wcs = None
+                    wcs = None               
 
                 return self.cutout_from_data(data=hdu.data, position=position, size=size, wcs=wcs)
