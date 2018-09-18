@@ -10,11 +10,12 @@ sudo: false
 # command to install dependencies
 install:
   - pip install -r requirements.txt
+  - pip install -r dev_requirements.txt
   - python setup.py install
 
 # command to run tests
 script:
-  - pytest -s
+  - pytest -s --cov
   - if [[ $TRAVIS_PYTHON_VERSION == '3.7' ]]; then
     flake8 -v $i || exit -1;
     fi;
