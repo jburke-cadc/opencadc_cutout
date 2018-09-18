@@ -71,6 +71,7 @@ import logging
 import numpy as np
 
 from astropy.nddata import Cutout2D
+from astropy.wcs import WCS
 
 
 class Cutout(object):
@@ -79,19 +80,36 @@ class Cutout(object):
         logging.getLogger().setLevel('INFO')
         self.logger = logging.getLogger(__name__)
 
-    def cutout_from_data(self, data, position, size, wcs, output_writer):
+    def cutout_from_data(self, data, position, size, header, output_writer):
         """
         Perform a Cutout of the given data at the given position and size.
         :param data:  The data to cutout from
         :param position:  The position to cutout from
         :param size:  The size in pixels of the cutout
-        :param wcs:    The WCS object to use with the cutout to return a copy of the WCS object.
+        :param header:    The Header object to re-append.
         :param output_writer:   The writer to push the cutout array to.
         """
+        wcs = WCS(header=header, naxis=2)
         cutout = self.get_cutout(data, position, size, wcs)
-        output_writer.write(cutout.wcs.to_header().tostring().encode('utf-8'))
+
+        output_header = self._construct_header(
+            original_header=header, cutout_result=cutout, size=size)
+
+        output_writer.write(output_header.tostring().encode('utf-8'))
         output_writer.write(cutout.data.tobytes())
         output_writer.flush()
+
+    def _construct_header(self, original_header, cutout_result, size):
+        output_header = original_header
+        cutout_header = cutout_result.wcs.to_header()
+
+        for key in cutout_header.keys():
+            output_header[key] = cutout_header[key]
+
+        output_header['NAXIS1'] = size[0]
+        output_header['NAXIS2'] = size[1]
+
+        return output_header
 
     def get_cutout(self, data, position, size, wcs):
         """

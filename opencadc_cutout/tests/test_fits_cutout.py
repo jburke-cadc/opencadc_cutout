@@ -96,7 +96,7 @@ def test_pixel_cutout():
     logger.setLevel('DEBUG')
 
     # Each point is one pixel out from the box.
-    expected_coords = (375.0, 396.0, 599.0, 620.0)
+    expected_coords = (375, 396, 599, 620)
     position = (np.average(expected_coords[:2]), np.average(
         expected_coords[2:]))
     extension = 0
@@ -140,7 +140,7 @@ def test_WCS_cutout():
     logger.info('\n\nPosition: {}\n\n'.format(position))
 
     # Size is the length of the sides.  This uses the values from the coordinates to determing the lengths.
-    expected_coords = (375.0, 396.0, 599.0, 620.0)
+    expected_coords = (375, 396, 599, 620)
     size = (((expected_coords[1]) - (expected_coords[0])) + 1,
             ((expected_coords[3]) - (expected_coords[2])) + 1)
 
@@ -173,6 +173,7 @@ def test_WCS_cutout():
 def test_cutout_stream():
     logger.setLevel('DEBUG')
 
+    header_check_keys = ('NAXIS1', 'NAXIS2', 'CRPIX1', 'HISTORY', 'NAXIS', 'CTYPE1', 'CRVAL1')
     frame = 'ICRS'.lower()
     ra = Longitude(9.0, unit=u.deg)
     dec = Latitude(66.3167, unit=u.deg)
@@ -182,7 +183,7 @@ def test_cutout_stream():
     logger.info('\n\nPosition: {}\n\n'.format(position))
 
     # Size is the length of the sides.  This uses the values from the coordinates to determing the lengths.
-    expected_coords = (375.0, 396.0, 599.0, 620.0)
+    expected_coords = (375, 396, 599, 620)
     size = (((expected_coords[1]) - (expected_coords[0])) + 1,
             ((expected_coords[3]) - (expected_coords[2])) + 1)
 
@@ -196,10 +197,16 @@ def test_cutout_stream():
                             test_file_handle, extension=extension)
         test_file_handle.close()
 
-    # with fits.open(expected_cutout_file_name) as fits_hdu_data, fits.open(file_name_path) as test_hdu_data:
-    #     # assert fits_hdu_data[extension].header == test_hdu_data[extension].header, 'Headers do not match.'
-    #     expected_data = fits_hdu_data[extension].data
-    #     test_result_data = test_hdu_data[extension].data
-    #     assert expected_data == test_result_data, 'Data does not match.'
-    #     logger.info('Test header {}'.format(test_hdu_data[extension].header))
-    #     assert False
+    with fits.open(expected_cutout_file_name) as expected_hdu_data, fits.open(file_name_path) as test_hdu_data:
+        logger.info('Test header {}'.format(test_hdu_data[extension].header))
+
+        expected_hdu = expected_hdu_data[extension]
+        test_hdu = test_hdu_data[extension]
+
+        assert len(header_check_keys) > 0
+        for check_key in header_check_keys:
+            assert expected_hdu.header[check_key] == test_hdu.header[check_key], 'Headers {} values do not match.'.format(check_key)
+
+        expected_data = expected_hdu.data
+        test_result_data = test_hdu.data
+        np.testing.assert_array_equal(test_result_data, expected_data, 'Data does not match')

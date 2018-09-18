@@ -71,8 +71,6 @@ import logging
 from .core import Cutout
 
 from astropy.io import fits
-from astropy.wcs import WCS
-from astropy.coordinates import SkyCoord
 
 
 class FITSCutout(Cutout):
@@ -94,6 +92,4 @@ class FITSCutout(Cutout):
         else:
             with fits.open(file_name, mode='readonly') as fits_data:
                 hdu = fits_data[extension]
-                wcs = WCS(header=hdu.header, naxis=2)
-
-                self.cutout_from_data(data=hdu.data, position=position, size=size, wcs=wcs, output_writer=output_writer)
+                self.cutout_from_data(data=hdu.data, header=hdu.header, position=position, size=size, output_writer=output_writer)
