@@ -1,31 +1,14 @@
+sudo: required
+
 language: python
 
-python:
-  - '2.7'
-  - '3.7'
-
-sudo: required
 services:
   - docker
 
-# Command to install dependencies
-install:
-  - pip install -r requirements.txt
-  - pip install -r dev_requirements.txt
-  - python setup.py install
+before_install:
+- docker pull opencadc/astroquery:3.7-alpine
+- docker pull opencadc/astroquery:2.7-alpine
 
-# command to run tests
 script:
-  - pytest -s --cov
-  - if [[ $TRAVIS_PYTHON_VERSION == '3.7' ]]; then
-    flake8 -v $i || exit -1;
-    fi;
-
-# after_success:
-#   # If coveralls.io is set up for this package, uncomment the line
-#   # below and replace "packagename" with the name of your package.
-#   # The coveragerc file may be customized as needed for your package.
-#   # Run coverage for all Python versions but submit only once - 3.5
-#   - if [[ $TRAVIS_PYTHON_VERSION == '3.5' ]]; then coverage combine $(ls -d */.coverage) || exit 1; coveralls; fi
-
-branch: master
+- docker run --rm -v $(pwd):/usr/src/app opencadc/astroquery:3.7-alpine python setup.py install
+- docker run --rm -v $(pwd):/usr/src/app opencadc/astroquery:2.7-alpine python setup.py install
