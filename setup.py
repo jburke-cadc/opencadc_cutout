@@ -78,12 +78,14 @@ class PyTest(TestCommand):
 
 
 install_requires = metadata.get('install_requires', '').strip().split()
+dependency_links = metadata.get('dependency_links', '').strip().split()
 
 setup(name=PACKAGENAME,
       version=VERSION,
       description=DESCRIPTION,
       scripts=scripts,
       install_requires=install_requires,
+      dependency_links=dependency_links,
       author=AUTHOR,
       author_email=AUTHOR_EMAIL,
       license=LICENSE,

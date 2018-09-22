@@ -72,6 +72,8 @@ import numpy as np
 
 from astropy.nddata import Cutout2D
 from astropy.wcs import WCS
+from astropy.coordinates import SkyCoord
+from .file_helper import FileHelperFactory
 
 
 class Cutout(object):
@@ -79,50 +81,20 @@ class Cutout(object):
     def __init__(self):
         logging.getLogger().setLevel('INFO')
         self.logger = logging.getLogger(__name__)
+        self.helper_factory = FileHelperFactory()
 
-    def cutout_from_data(self, data, position, size, header, output_writer):
+    def cutout(self, file_path, cutout_regions, output_writer, file_args=None):
         """
         Perform a Cutout of the given data at the given position and size.
-        :param data:  The data to cutout from
-        :param position:  The position to cutout from
-        :param size:  The size in pixels of the cutout
-        :param header:    The Header object to re-append.
+        :param file_path:   The file location.  The file extension is important as it's used to determine how to process it.
+        :param cutout_regions   Array of cutout regions to apply.  This can be a single Circle or Polygon, or for Interval cutouts it will be data type specific arrays.
         :param output_writer:   The writer to push the cutout array to.
+        :param file_args:   The file specific arguments.  (e.g. extensions=[0,3] for FITS)
         """
-        wcs = WCS(header=header, naxis=2)
-        cutout = self.get_cutout(data, position, size, wcs)
+        file_helper = self._get_file_helper(file_path)
 
-        output_header = self._construct_header(
-            original_header=header, cutout_result=cutout, size=size)
+        for cutout_region in cutout_regions:
+            file_helper.cutout(cutout_region, output_writer, extensions=[0])
 
-        output_writer.write(output_header.tostring().encode('utf-8'))
-        output_writer.write(cutout.data.tobytes())
-        output_writer.flush()
-
-    def _construct_header(self, original_header, cutout_result, size):
-        output_header = original_header
-        cutout_header = cutout_result.wcs.to_header()
-
-        for key in cutout_header.keys():
-            output_header[key] = cutout_header[key]
-
-        output_header['NAXIS1'] = size[0]
-        output_header['NAXIS2'] = size[1]
-
-        return output_header
-
-    def get_cutout(self, data, position, size, wcs):
-        """
-        Perform a Cutout of the given data at the given position and size.
-        :param data:  The data to cutout from
-        :param position:  The position to cutout from
-        :param size:  The size in pixels of the cutout
-        :param wcs:    The WCS object to use with the cutout to return a copy of the WCS object.
-
-        :return: Cutout2D instance
-        """
-
-        # Sanitize the array by removing the single-dimensional entries.
-        sanitized_data = np.squeeze(data)
-
-        return Cutout2D(data=sanitized_data, position=position, size=size, wcs=wcs)
+    def _get_file_helper(self, file_path):
+        return self.helper_factory.get_instance(file_path)

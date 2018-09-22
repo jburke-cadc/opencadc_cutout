@@ -67,12 +67,91 @@
 # ***********************************************************************
 #
 
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
+
+import logging
+import os
+import regions
+import numpy as np
 from enum import Enum
 
-class FileTypes(Enum):
-    FITS = {
-        'helper': ''
-    }
+from astropy.io import fits
+from astropy.nddata.utils import Cutout2D
+from astropy.wcs import WCS
 
-    def get_helper_class(self):
-        return self.value.helper
+from regions.core import PixelRegion, SkyRegion
+
+
+class BaseFileHelper(object):
+    def do_cutout(self, data, position, size, wcs):
+        """
+        Perform a Cutout of the given data at the given position and size.
+        :param data:  The data to cutout from
+        :param position:  The position to cutout from
+        :param size:  The size in pixels of the cutout
+        :param wcs:    The WCS object to use with the cutout to return a copy of the WCS object.
+
+        :return: Cutout2D instance
+        """
+
+        # Sanitize the array by removing the single-dimensional entries.
+        sanitized_data = np.squeeze(data)
+
+        return Cutout2D(data=sanitized_data, position=position, size=size, wcs=wcs)
+
+class FITSHelper(BaseFileHelper):
+
+    def __init__(self, file_path):
+        self.logger = logging.getLogger()
+        self.logger.setLevel('DEBUG')
+        if file_path is None or file_path == '':
+            raise ValueError('FITS file path is required.')
+        else:
+            self.file_path = file_path
+        super(FITSHelper, self).__init__()
+
+    def _get_extensions(self, kwargs):
+        if 'extensions' in kwargs:
+            return kwargs['extensions']
+        elif 'extension' in kwargs:
+            return [kwargs['extension']]
+        else:
+            return [0]
+
+    def cutout(self, cutout_region, output_writer, **kwargs):
+        with fits.open(self.file_path, mode='readonly') as fits_data:
+            extension = self._get_extensions(kwargs)[0]
+            hdu = fits_data[extension]
+            header = hdu.header
+            wcs = WCS(header=header, naxis=2)
+
+            if isinstance(cutout_region, SkyRegion):
+                bounding_box = cutout_region.to_pixel(wcs).bounding_box
+            elif isinstance(cutout_region, PixelRegion):
+                bounding_box = cutout_region.bounding_box
+
+            position = bounding_box.to_region().center.to_sky(wcs)
+            size = bounding_box.shape
+
+            cutout_result = self.do_cutout(data=hdu.data, position=position, size=size, wcs=wcs)
+
+            header.update(cutout_result.wcs.to_header())
+            header['NAXIS1'] = size[0]
+            header['NAXIS2'] = size[1]
+            output_writer.write(header.tostring().encode('utf-8'))
+            output_writer.flush()
+            output_writer.write(cutout_result.data.tobytes())
+            output_writer.flush()
+
+
+class FileTypeHelpers(Enum):
+    FITS = FITSHelper
+
+
+class FileHelperFactory(object):
+
+    def get_instance(self, file_path):
+        _, extension = os.path.splitext(file_path)
+        helper_class = FileTypeHelpers[extension.split('.')[1].upper()].value
+        return helper_class(file_path)

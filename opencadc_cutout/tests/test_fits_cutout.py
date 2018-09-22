@@ -67,21 +67,29 @@
 # ***********************************************************************
 #
 
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
+
 import logging
 import numpy as np
 import os
 import sys
 import pytest
 import tempfile
+import regions
 
 from io import BufferedWriter
 from astropy.io import fits
 from astropy.wcs import WCS
 from astropy import units as u
+from regions.core import PixCoord
+from regions.shapes.circle import CirclePixelRegion
 from astropy.coordinates import SkyCoord, Longitude, Latitude
+from astropy.wcs.utils import skycoord_to_pixel
 
 from .context import opencadc_cutout
-from opencadc_cutout.cutout_factory import CutoutFactory
+from opencadc_cutout.core import Cutout
+
 
 pytest.main(args=['-s', os.path.abspath(__file__)])
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -94,119 +102,114 @@ logger = logging.getLogger()
 
 def test_pixel_cutout():
     logger.setLevel('DEBUG')
-
-    # Each point is one pixel out from the box.
-    expected_coords = (375, 396, 599, 620)
-    position = (np.average(expected_coords[:2]), np.average(
-        expected_coords[2:]))
     extension = 0
-
-    logger.info('\n\nPosition: {}\n\n'.format(position))
-
-    # Size is the length of the sides.  This uses the values from the coordinates to determing the lengths.
-    size = (((expected_coords[1]) - (expected_coords[0])) + 1,
-            ((expected_coords[3]) - (expected_coords[2])) + 1)
-
-    test_subject = CutoutFactory.factory(
-        opencadc_cutout.file_types.FileTypes.FITS)
 
     with fits.open(target_file_name, mode='readonly') as target_hdu_data:
         target_hdu = target_hdu_data[extension]
-        wcs = WCS(header=target_hdu.header, naxis=2)
-        cutout_result = test_subject.get_cutout(
-            target_hdu.data, position, size, wcs)
+        target_wcs = WCS(target_hdu.header, naxis=2)
 
-    with fits.open(expected_cutout_file_name, mode='readonly') as fits_hdu_data:
-        primary_hdu = fits_hdu_data[extension]
-        expected_wcs = WCS(header=primary_hdu.header, naxis=2)
-        expected_arr = np.squeeze(primary_hdu.data)
-        ndarr = cutout_result.data
-        assert expected_wcs.wcs == cutout_result.wcs.wcs, "WCS doesn't match"
-
-    assert ndarr.shape == expected_arr.shape, "Shapes don't match."
-    np.testing.assert_array_equal(
-        ndarr, expected_arr, "Arrays don't match")
-
-
-def test_WCS_cutout():
-    logger.setLevel('DEBUG')
-
-    frame = 'ICRS'.lower()
     ra = Longitude(9.0, unit=u.deg)
     dec = Latitude(66.3167, unit=u.deg)
-    position = SkyCoord(ra=ra, dec=dec, frame=frame)
-    extension = 0
+    pix_vals = skycoord_to_pixel(SkyCoord(ra, dec, frame='icrs'), target_wcs)
+    cutout_region = CirclePixelRegion(PixCoord(x=pix_vals[0], y=pix_vals[1]), radius=0.05)
+    test_subject = Cutout()
+    _, cutout_file_name_path = tempfile.mkstemp(suffix='.fits')
 
-    logger.info('\n\nPosition: {}\n\n'.format(position))
-
-    # Size is the length of the sides.  This uses the values from the coordinates to determing the lengths.
-    expected_coords = (375, 396, 599, 620)
-    size = (((expected_coords[1]) - (expected_coords[0])) + 1,
-            ((expected_coords[3]) - (expected_coords[2])) + 1)
-
-    test_subject = CutoutFactory.factory(
-        opencadc_cutout.file_types.FileTypes.FITS)
-
-    with fits.open(target_file_name, mode='readonly') as target_hdu_data:
-        target_hdu = target_hdu_data[extension]
-        wcs = WCS(header=target_hdu.header, naxis=2)
-        cutout_result = test_subject.get_cutout(
-            target_hdu.data, position, size, wcs)
-
-    with fits.open(expected_cutout_file_name) as fits_hdu_data:
-        hdu = fits_hdu_data[extension]
-        expected_wcs = WCS(header=hdu.header, naxis=2)
-        expected_arr = np.squeeze(hdu.data)
-        logger.info('\n\nNAxis in result: {}\n\n'.format(
-            cutout_result.wcs.naxis))
-        logger.info('\n\nNAxis in expected WCS: {}\n\n'.format(
-            expected_wcs.naxis))
-        assert expected_wcs.wcs == cutout_result.wcs.wcs, "WCS doesn't match"
-
-    ndarr = cutout_result.data
-
-    assert ndarr.shape == expected_arr.shape, "Shapes don't match."
-    np.testing.assert_array_equal(
-        ndarr, expected_arr, "Arrays don't match")
-
-
-def test_cutout_stream():
-    logger.setLevel('DEBUG')
-
-    header_check_keys = ('NAXIS1', 'NAXIS2', 'CRPIX1', 'HISTORY', 'NAXIS', 'CTYPE1', 'CRVAL1')
-    frame = 'ICRS'.lower()
-    ra = Longitude(9.0, unit=u.deg)
-    dec = Latitude(66.3167, unit=u.deg)
-    position = SkyCoord(ra=ra, dec=dec, frame=frame)
-    extension = 0
-
-    logger.info('\n\nPosition: {}\n\n'.format(position))
-
-    # Size is the length of the sides.  This uses the values from the coordinates to determing the lengths.
-    expected_coords = (375, 396, 599, 620)
-    size = (((expected_coords[1]) - (expected_coords[0])) + 1,
-            ((expected_coords[3]) - (expected_coords[2])) + 1)
-
-    test_subject = CutoutFactory.factory(
-        opencadc_cutout.file_types.FileTypes.FITS)
-
-    _, file_name_path = tempfile.mkstemp(suffix='.fits')
-
-    with open(file_name_path, 'wb') as test_file_handle:
-        test_subject.cutout(target_file_name, position, size,
-                            test_file_handle, extension=extension)
+    with open(cutout_file_name_path, 'wb') as test_file_handle:
+        test_subject.cutout(target_file_name, [cutout_region], test_file_handle)
         test_file_handle.close()
 
-    with fits.open(expected_cutout_file_name) as expected_hdu_data, fits.open(file_name_path) as test_hdu_data:
-        logger.info('Test header {}'.format(test_hdu_data[extension].header))
-
+    with fits.open(expected_cutout_file_name, mode='readonly') as expected_hdu_data, fits.open(cutout_file_name_path, mode='readonly') as result_hdu_data:
         expected_hdu = expected_hdu_data[extension]
-        test_hdu = test_hdu_data[extension]
+        result_hdu = result_hdu_data[extension]
+        expected_wcs = WCS(header=expected_hdu.header, naxis=2)
+        result_wcs = WCS(header=result_hdu.header, naxis=2)
 
-        assert len(header_check_keys) > 0
-        for check_key in header_check_keys:
-            assert expected_hdu.header[check_key] == test_hdu.header[check_key], 'Headers {} values do not match.'.format(check_key)
+        assert expected_wcs.wcs == result_wcs.wcs, 'Incorrect WCS.'
+        np.testing.assert_array_equal(
+            result_hdu.data, expected_hdu.data, "Arrays don't match")
 
-        expected_data = expected_hdu.data
-        test_result_data = test_hdu.data
-        np.testing.assert_array_equal(test_result_data, expected_data, 'Data does not match')
+        # assert result_data.shape == expected_data.shape, "Shapes don't match."
+
+# def test_RA_Dec_cutout():
+#     logger.setLevel('DEBUG')
+
+#     frame = 'ICRS'.lower()
+#     ra = Longitude(9.0, unit=u.deg)
+#     dec = Latitude(66.3167, unit=u.deg)
+#     position = SkyCoord(ra=ra, dec=dec, frame=frame)
+#     extension = 0
+
+#     logger.info('\n\nPosition: {}\n\n'.format(position))
+
+#     # Size is the length of the sides.  This uses the values from the coordinates to determing the lengths.
+#     expected_coords = (375, 396, 599, 620)
+#     size = (((expected_coords[1]) - (expected_coords[0])) + 1,
+#             ((expected_coords[3]) - (expected_coords[2])) + 1)
+
+#     test_subject = CutoutFactory.factory(
+#         opencadc_cutout.file_types.FileTypes.FITS)
+
+#     with fits.open(target_file_name, mode='readonly') as target_hdu_data:
+#         target_hdu = target_hdu_data[extension]
+#         wcs = WCS(header=target_hdu.header, naxis=2)
+#         cutout_result = test_subject.get_cutout(
+#             target_hdu.data, position, size, wcs)
+
+#     with fits.open(expected_cutout_file_name) as fits_hdu_data:
+#         hdu = fits_hdu_data[extension]
+#         expected_wcs = WCS(header=hdu.header, naxis=2)
+#         expected_arr = np.squeeze(hdu.data)
+#         logger.info('\n\nNAxis in result: {}\n\n'.format(
+#             cutout_result.wcs.naxis))
+#         logger.info('\n\nNAxis in expected WCS: {}\n\n'.format(
+#             expected_wcs.naxis))
+#         assert expected_wcs.wcs == cutout_result.wcs.wcs, "WCS doesn't match"
+
+#     ndarr = cutout_result.data
+
+#     assert ndarr.shape == expected_arr.shape, "Shapes don't match."
+#     np.testing.assert_array_equal(
+#         ndarr, expected_arr, "Arrays don't match")
+
+
+# def test_cutout_stream():
+#     logger.setLevel('DEBUG')
+
+#     header_check_keys = ('NAXIS1', 'NAXIS2', 'CRPIX1', 'HISTORY', 'NAXIS', 'CTYPE1', 'CRVAL1')
+#     frame = 'ICRS'.lower()
+#     ra = Longitude(9.0, unit=u.deg)
+#     dec = Latitude(66.3167, unit=u.deg)
+#     position = SkyCoord(ra=ra, dec=dec, frame=frame)
+#     extension = 0
+
+#     logger.info('\n\nPosition: {}\n\n'.format(position))
+
+#     # Size is the length of the sides.  This uses the values from the coordinates to determing the lengths.
+#     expected_coords = (375, 396, 599, 620)
+#     size = (((expected_coords[1]) - (expected_coords[0])) + 1,
+#             ((expected_coords[3]) - (expected_coords[2])) + 1)
+
+#     test_subject = CutoutFactory.factory(
+#         opencadc_cutout.file_types.FileTypes.FITS)
+
+#     _, file_name_path = tempfile.mkstemp(suffix='.fits')
+
+#     with open(file_name_path, 'wb') as test_file_handle:
+#         test_subject.cutout(target_file_name, position, size,
+#                             test_file_handle, extension=extension)
+#         test_file_handle.close()
+
+#     with fits.open(expected_cutout_file_name) as expected_hdu_data, fits.open(file_name_path) as test_hdu_data:
+#         logger.info('Test header {}'.format(test_hdu_data[extension].header))
+
+#         expected_hdu = expected_hdu_data[extension]
+#         test_hdu = test_hdu_data[extension]
+
+#         assert len(header_check_keys) > 0
+#         for check_key in header_check_keys:
+#             assert expected_hdu.header[check_key] == test_hdu.header[check_key], 'Headers {} values do not match.'.format(check_key)
+
+#         expected_data = expected_hdu.data
+#         test_result_data = test_hdu.data
+#         np.testing.assert_array_equal(test_result_data, expected_data, 'Data does not match')
