@@ -100,19 +100,10 @@ expected_cutout_file_name = os.path.join(
 logger = logging.getLogger()
 
 
-def test_pixel_cutout():
-    logger.setLevel('DEBUG')
-    extension = 0
-
-    cutout_region = BoundingBox(376, 397, 600, 621)
-
+def _check_output_file(cutout_file_name_path, cutout_regions, extension=0):
     test_subject = Cutout()
-    _, cutout_file_name_path = tempfile.mkstemp(
-        suffix='.fits', dir='/usr/src/app')
-
     with open(cutout_file_name_path, 'wb') as test_file_handle:
-        test_subject.cutout(target_file_name, [
-                            cutout_region], test_file_handle)
+        test_subject.cutout(target_file_name, cutout_regions, test_file_handle)
         test_file_handle.close()
 
     with fits.open(expected_cutout_file_name, mode='readonly') as expected_hdu_data, fits.open(cutout_file_name_path, mode='readonly') as result_hdu_data:
@@ -126,6 +117,14 @@ def test_pixel_cutout():
         assert expected_wcs.wcs == result_wcs.wcs, 'Incorrect WCS.'
         np.testing.assert_array_equal(
             np.squeeze(expected_hdu.data), result_hdu.data, "Arrays don't match")
+
+
+def test_pixel_cutout():
+    logger.setLevel('DEBUG')
+    extension = 0
+    cutout_region = BoundingBox(376, 397, 600, 621)
+    _, cutout_file_name_path = tempfile.mkstemp(suffix='.fits')
+    _check_output_file(cutout_file_name_path, [cutout_region], extension=extension)
 
 
 def test_circle_wcs_cutout():
@@ -138,23 +137,5 @@ def test_circle_wcs_cutout():
     radius = Quantity(0.05, unit=u.deg)
     cutout_region = CircleSkyRegion(SkyCoord(ra=ra, dec=dec, frame=frame), radius=radius)
 
-    test_subject = Cutout()
-    _, cutout_file_name_path = tempfile.mkstemp(
-        suffix='.fits', dir='/usr/src/app')
-
-    with open(cutout_file_name_path, 'wb') as test_file_handle:
-        test_subject.cutout(target_file_name, [
-                            cutout_region], test_file_handle)
-        test_file_handle.close()
-
-    with fits.open(expected_cutout_file_name, mode='readonly') as expected_hdu_data, fits.open(cutout_file_name_path, mode='readonly') as result_hdu_data:
-        expected_hdu = expected_hdu_data[extension]
-        result_hdu = result_hdu_data[extension]
-        expected_wcs = WCS(header=expected_hdu.header, naxis=2)
-        result_wcs = WCS(header=result_hdu.header, naxis=2)
-
-        np.testing.assert_array_equal(
-            expected_wcs.wcs.crpix, result_wcs.wcs.crpix, 'Wrong CRPIX values.')
-        assert expected_wcs.wcs == result_wcs.wcs, 'Incorrect WCS.'
-        np.testing.assert_array_equal(
-            np.squeeze(expected_hdu.data), result_hdu.data, "Arrays don't match")
+    _, cutout_file_name_path = tempfile.mkstemp(suffix='.fits')
+    _check_output_file(cutout_file_name_path, [cutout_region], extension=extension)
