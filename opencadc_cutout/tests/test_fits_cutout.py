@@ -101,6 +101,8 @@ logger = logging.getLogger()
 
 def _check_output_file(cutout_file_name_path, cutout_regions, extension=0):
     test_subject = Cutout()
+
+    # Write out a test file with the test result FITS data.
     with open(cutout_file_name_path, 'wb') as test_file_handle:
         test_subject.cutout(target_file_name, cutout_regions, test_file_handle)
         test_file_handle.close()
@@ -111,11 +113,13 @@ def _check_output_file(cutout_file_name_path, cutout_regions, extension=0):
         expected_wcs = WCS(header=expected_hdu.header, naxis=2)
         result_wcs = WCS(header=result_hdu.header, naxis=2)
 
+        fits_diff = fits.FITSDiff(expected_hdu_data, result_hdu_data)
+        np.testing.assert_array_equal(
+            (), fits_diff.diff_hdu_count, 'HDU count diff should be empty.')
         np.testing.assert_array_equal(
             expected_wcs.wcs.crpix, result_wcs.wcs.crpix, 'Wrong CRPIX values.')
-        assert expected_wcs.wcs == result_wcs.wcs, 'Incorrect WCS.'
         np.testing.assert_array_equal(
-            np.squeeze(expected_hdu.data), result_hdu.data, "Arrays don't match")
+            np.squeeze(expected_hdu.data), result_hdu.data, 'Arrays do not match.')
 
 
 def test_pixel_cutout():
@@ -125,8 +129,10 @@ def test_pixel_cutout():
     logger.setLevel('DEBUG')
     extension = 0
     cutout_region = BoundingBox(376, 397, 600, 621)
+    cutout_regions = [cutout_region]
     _, cutout_file_name_path = tempfile.mkstemp(suffix='.fits')
-    _check_output_file(cutout_file_name_path, [cutout_region], extension=extension)
+    _check_output_file(cutout_file_name_path,
+                       cutout_regions, extension=extension)
 
 
 def test_circle_wcs_cutout():
@@ -135,15 +141,16 @@ def test_circle_wcs_cutout():
     """
     logger.setLevel('DEBUG')
     extension = 0
-
     frame = 'ICRS'.lower()
     ra = Longitude(9.0, unit=u.deg)
     dec = Latitude(66.3167, unit=u.deg)
     radius = u.Quantity(0.05, unit=u.deg)
-    cutout_region = CircleSkyRegion(SkyCoord(ra=ra, dec=dec, frame=frame), radius=radius)
-
+    sky_position = SkyCoord(ra=ra, dec=dec, frame=frame)
+    cutout_region = CircleSkyRegion(sky_position, radius=radius)
+    cutout_regions = [cutout_region]
     _, cutout_file_name_path = tempfile.mkstemp(suffix='.fits')
-    _check_output_file(cutout_file_name_path, [cutout_region], extension=extension)
+    _check_output_file(cutout_file_name_path,
+                       cutout_regions, extension=extension)
 
 # def test_polygon_wcs_cutout():
 #     """
