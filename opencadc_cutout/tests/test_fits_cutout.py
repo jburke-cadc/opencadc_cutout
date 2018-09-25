@@ -82,10 +82,9 @@ from astropy.io import fits
 from astropy.wcs import WCS
 from astropy import units as u
 from regions.core import PixCoord, BoundingBox
-from astropy.units import Quantity
 from regions.shapes.circle import CirclePixelRegion, CircleSkyRegion
-from astropy.coordinates import SkyCoord, Longitude, Latitude, Angle, UnitSphericalRepresentation
-from astropy.wcs.utils import skycoord_to_pixel
+from regions.shapes.polygon import PolygonPixelRegion, PolygonSkyRegion
+from astropy.coordinates import SkyCoord, Longitude, Latitude
 
 from .context import opencadc_cutout
 from opencadc_cutout.core import Cutout
@@ -120,6 +119,9 @@ def _check_output_file(cutout_file_name_path, cutout_regions, extension=0):
 
 
 def test_pixel_cutout():
+    """
+    Test a simple bounding box matching the parameters of the test file.
+    """
     logger.setLevel('DEBUG')
     extension = 0
     cutout_region = BoundingBox(376, 397, 600, 621)
@@ -128,14 +130,29 @@ def test_pixel_cutout():
 
 
 def test_circle_wcs_cutout():
+    """
+    Test a WCS (SkyCoord) circle.
+    """
     logger.setLevel('DEBUG')
     extension = 0
 
     frame = 'ICRS'.lower()
     ra = Longitude(9.0, unit=u.deg)
     dec = Latitude(66.3167, unit=u.deg)
-    radius = Quantity(0.05, unit=u.deg)
+    radius = u.Quantity(0.05, unit=u.deg)
     cutout_region = CircleSkyRegion(SkyCoord(ra=ra, dec=dec, frame=frame), radius=radius)
 
     _, cutout_file_name_path = tempfile.mkstemp(suffix='.fits')
     _check_output_file(cutout_file_name_path, [cutout_region], extension=extension)
+
+# def test_polygon_wcs_cutout():
+#     """
+#     Test a WCS (SkyCoord) polygon.
+#     """
+#     frame = 'ICRS'.lower()
+#     logger.setLevel('DEBUG')
+#     extension = 0
+#     cutout_region = PolygonSkyRegion(SkyCoord([3, 4, 3] * u.deg, [3, 4, 4] * u.deg, frame=frame))
+
+#     _, cutout_file_name_path = tempfile.mkstemp(suffix='.fits')
+#     _check_output_file(cutout_file_name_path, [cutout_region], extension=extension)
