@@ -80,7 +80,7 @@ from astropy.io import fits
 from astropy.nddata.utils import Cutout2D
 from astropy.wcs import WCS
 
-from regions.core import PixelRegion, SkyRegion
+from regions.core import PixelRegion, SkyRegion, BoundingBox
 
 
 class BaseFileHelper(object):
@@ -99,6 +99,7 @@ class BaseFileHelper(object):
         sanitized_data = np.squeeze(data)
 
         return Cutout2D(data=sanitized_data, position=position, size=size, wcs=wcs)
+
 
 class FITSHelper(BaseFileHelper):
 
@@ -127,22 +128,28 @@ class FITSHelper(BaseFileHelper):
             wcs = WCS(header=header, naxis=2)
 
             if isinstance(cutout_region, SkyRegion):
-                bounding_box = cutout_region.to_pixel(wcs).bounding_box
+                _bounding_box = cutout_region.to_pixel(wcs).bounding_box
             elif isinstance(cutout_region, PixelRegion):
-                bounding_box = cutout_region.bounding_box
+                _bounding_box = cutout_region.bounding_box
+            elif isinstance(cutout_region, BoundingBox):
+                _bounding_box = cutout_region
+            else:
+                raise ValueError(
+                    'Unsupported region cutout specified: {}'.format(cutout_region))
 
-            position = bounding_box.to_region().center.to_sky(wcs)
+            bounding_box = BoundingBox.from_float(
+                xmin=(_bounding_box.ixmin - 1.0), xmax=(_bounding_box.ixmax - 1.0),
+                ymin=(_bounding_box.iymin - 1.0), ymax=(_bounding_box.iymax - 1.0))
+            box_center = bounding_box.to_region().center
+            position = (box_center.x, box_center.y)
             size = bounding_box.shape
 
-            cutout_result = self.do_cutout(data=hdu.data, position=position, size=size, wcs=wcs)
+            cutout_result = self.do_cutout(
+                data=hdu.data, position=position, size=size, wcs=wcs)
 
             header.update(cutout_result.wcs.to_header())
-            header['NAXIS1'] = size[0]
-            header['NAXIS2'] = size[1]
-            output_writer.write(header.tostring().encode('utf-8'))
-            output_writer.flush()
-            output_writer.write(cutout_result.data.tobytes())
-            output_writer.flush()
+            fits.writeto(filename=output_writer, header=header, data=cutout_result.data,
+                         overwrite=True, output_verify='silentfix', checksum=False)
 
 
 class FileTypeHelpers(Enum):
