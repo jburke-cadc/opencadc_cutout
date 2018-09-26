@@ -99,8 +99,11 @@ expected_cutout_file_name = os.path.join(
 logger = logging.getLogger()
 
 
-def _check_output_file(cutout_file_name_path, cutout_regions, extension=0):
+def _check_output_file(cutout_regions, extension=0):
     test_subject = Cutout()
+
+    # To debug the resulting FITS files when running with Docker, set dir='/usr/src/app'
+    _, cutout_file_name_path = tempfile.mkstemp(suffix='.fits')
 
     # Write out a test file with the test result FITS data.
     with open(cutout_file_name_path, 'wb') as test_file_handle:
@@ -130,9 +133,7 @@ def test_pixel_cutout():
     extension = 0
     cutout_region = BoundingBox(376, 397, 600, 621)
     cutout_regions = [cutout_region]
-    _, cutout_file_name_path = tempfile.mkstemp(suffix='.fits')
-    _check_output_file(cutout_file_name_path,
-                       cutout_regions, extension=extension)
+    _check_output_file(cutout_regions, extension=extension)
 
 
 def test_circle_wcs_cutout():
@@ -148,9 +149,7 @@ def test_circle_wcs_cutout():
     sky_position = SkyCoord(ra=ra, dec=dec, frame=frame)
     cutout_region = CircleSkyRegion(sky_position, radius=radius)
     cutout_regions = [cutout_region]
-    _, cutout_file_name_path = tempfile.mkstemp(suffix='.fits')
-    _check_output_file(cutout_file_name_path,
-                       cutout_regions, extension=extension)
+    _check_output_file(cutout_regions, extension=extension)
 
 # def test_polygon_wcs_cutout():
 #     """
