@@ -90,7 +90,7 @@ from .no_content_error import NoContentError
 class BaseFileHelper(object):
     def __init__(self, file_path):
         self.logger = logging.getLogger()
-        self.logger.setLevel('DEBUG')
+        self.logger.setLevel('INFO')
         if file_path is None or file_path == '':
             raise ValueError('File path is required.')
         else:
@@ -117,7 +117,6 @@ class BaseFileHelper(object):
 
     def get_bounding_box_offsets(self, cutout_region):
         shape_type = type(cutout_region).__name__
-        self.logger.info('Shape type is {}'.format(shape_type))
         if shape_type.startswith('Polygon'):
             return (0, 0, 0, 0)
         else:
@@ -125,7 +124,6 @@ class BaseFileHelper(object):
 
     def get_position_center_offsets(self, cutout_region):
         shape_type = type(cutout_region).__name__
-        self.logger.info('Shape type is {}'.format(shape_type))
         if shape_type.startswith('Polygon'):
             return (0, -1)
         else:
@@ -174,7 +172,7 @@ class FITSHelper(BaseFileHelper):
             box_center = bounding_box.to_region().center
             position = (box_center.x + position_offsets[0], box_center.y + position_offsets[1])
             size = bounding_box.shape
-            self.logger.info('Position: {} with size {}'.format(position, size))
+            self.logger.debug('Position: {}\nSize {}'.format(position, size))
             cutout_result = self.do_cutout(
                 data=hdu.data, position=position, size=size, wcs=wcs)
 
