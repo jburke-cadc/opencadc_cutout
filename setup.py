@@ -58,8 +58,6 @@ for entry_point in entry_point_list:
                                                               entry_point[1]))
 
 # add the --cov option to the test command
-
-
 class PyTest(TestCommand):
     """class py.test for the testing
 
@@ -68,7 +66,7 @@ class PyTest(TestCommand):
 
     def __init__(self, dist, **kw):
         TestCommand.__init__(self, dist, **kw)
-        self.pytest_args = ['--cov', PACKAGENAME]
+        self.pytest_args = ['--cov', PACKAGENAME, '--disable-warnings']
 
     def run_tests(self):
         # import here, cause outside the eggs aren't loaded

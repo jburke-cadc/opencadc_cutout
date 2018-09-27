@@ -77,13 +77,25 @@ import numpy as np
 from enum import Enum
 
 from astropy.io import fits
-from astropy.nddata.utils import Cutout2D
+from astropy.nddata.utils import Cutout2D, NoOverlapError
 from astropy.wcs import WCS
 
 from regions.core import PixelRegion, SkyRegion, BoundingBox
+from regions.shapes.circle import CircleSkyRegion, CirclePixelRegion
+from regions.shapes.polygon import PolygonSkyRegion, PolygonPixelRegion
+
+from .no_content_error import NoContentError
 
 
 class BaseFileHelper(object):
+    def __init__(self, file_path):
+        self.logger = logging.getLogger()
+        self.logger.setLevel('DEBUG')
+        if file_path is None or file_path == '':
+            raise ValueError('File path is required.')
+        else:
+            self.file_path = file_path
+
     def do_cutout(self, data, position, size, wcs):
         """
         Perform a Cutout of the given data at the given position and size.
@@ -98,7 +110,26 @@ class BaseFileHelper(object):
         # Sanitize the array by removing the single-dimensional entries.
         sanitized_data = np.squeeze(data)
 
-        return Cutout2D(data=sanitized_data, position=position, size=size, wcs=wcs)
+        try:
+            return Cutout2D(data=sanitized_data, position=position, size=size, wcs=wcs)
+        except NoOverlapError:
+            raise NoContentError('No content (arrays do not overlap).')
+
+    def get_bounding_box_offsets(self, cutout_region):
+        shape_type = type(cutout_region).__name__
+        self.logger.info('Shape type is {}'.format(shape_type))
+        if shape_type.startswith('Polygon'):
+            return (0, 0, 0, 0)
+        else:
+            return (-1, 0, -1, 0)
+
+    def get_position_center_offsets(self, cutout_region):
+        shape_type = type(cutout_region).__name__
+        self.logger.info('Shape type is {}'.format(shape_type))
+        if shape_type.startswith('Polygon'):
+            return (0, -1)
+        else:
+            return (0, 0)
 
 
 class FITSHelper(BaseFileHelper):
@@ -106,11 +137,7 @@ class FITSHelper(BaseFileHelper):
     def __init__(self, file_path):
         self.logger = logging.getLogger()
         self.logger.setLevel('DEBUG')
-        if file_path is None or file_path == '':
-            raise ValueError('FITS file path is required.')
-        else:
-            self.file_path = file_path
-        super(FITSHelper, self).__init__()
+        super(FITSHelper, self).__init__(file_path)
 
     def _get_extensions(self, kwargs):
         if 'extensions' in kwargs:
@@ -121,7 +148,7 @@ class FITSHelper(BaseFileHelper):
             return [0]
 
     def cutout(self, cutout_region, output_writer, **kwargs):
-        with fits.open(self.file_path, mode='readonly') as fits_data:
+        with fits.open(self.file_path, mode='readonly', memmap=True) as fits_data:
             extension = self._get_extensions(kwargs)[0]
             hdu = fits_data[extension]
             header = hdu.header
@@ -137,13 +164,17 @@ class FITSHelper(BaseFileHelper):
                 raise ValueError(
                     'Unsupported region cutout specified: {}'.format(cutout_region))
 
-            bounding_box = BoundingBox.from_float(
-                xmin=(_bounding_box.ixmin - 1.0), xmax=(_bounding_box.ixmax - 1.0),
-                ymin=(_bounding_box.iymin - 1.0), ymax=(_bounding_box.iymax - 1.0))
-            box_center = bounding_box.to_region().center
-            position = (box_center.x, box_center.y)
-            size = bounding_box.shape
+            box_offsets = self.get_bounding_box_offsets(cutout_region)
+            position_offsets = self.get_position_center_offsets(cutout_region)
 
+            # Expand the box by one (1) pixel.
+            bounding_box = BoundingBox(
+                (_bounding_box.ixmin + box_offsets[0]), (_bounding_box.ixmax + box_offsets[1]),
+                (_bounding_box.iymin + box_offsets[2]), (_bounding_box.iymax + box_offsets[3]))
+            box_center = bounding_box.to_region().center
+            position = (box_center.x + position_offsets[0], box_center.y + position_offsets[1])
+            size = bounding_box.shape
+            self.logger.info('Position: {} with size {}'.format(position, size))
             cutout_result = self.do_cutout(
                 data=hdu.data, position=position, size=size, wcs=wcs)
 

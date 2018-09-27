@@ -77,6 +77,10 @@ from .file_helper import FileHelperFactory
 
 
 class Cutout(object):
+    """
+    Base cutout class.  This is mainly used as a parent class for concrete instances, like from a FITS file, but
+    can be called by itself if need be.
+    """
 
     def __init__(self):
         logging.getLogger().setLevel('INFO')
