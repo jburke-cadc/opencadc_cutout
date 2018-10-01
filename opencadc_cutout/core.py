@@ -98,7 +98,7 @@ class Cutout(object):
         file_helper = self._get_file_helper(file_path)
 
         for cutout_region in cutout_regions:
-            file_helper.cutout(cutout_region, output_writer, extensions=[0])
+            file_helper.cutout(cutout_region, output_writer)
 
     def _get_file_helper(self, file_path):
         return self.helper_factory.get_instance(file_path)
