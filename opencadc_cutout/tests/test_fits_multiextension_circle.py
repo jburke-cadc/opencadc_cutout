@@ -96,17 +96,19 @@ target_file_name = os.path.join(TESTDATA_DIR, 'test-macho-multiextension.fits')
 expected_circle_cutout_file_name = os.path.join(
     TESTDATA_DIR, 'test-macho-multiextension-cutout.fits')
 logger = logging.getLogger()
-KEEP_TEST_FILES=False
+logger.setLevel('DEBUG')
+REMOVE_TEST_FILES = False
 
 
 def _check_multiextension_circle_output_file(cutout_regions):
     test_subject = Cutout()
-    cutout_file_name_path = random_test_file_name_path()
+    cutout_file_name_path = random_test_file_name_path(dir_name='/usr/src/app')
     logger.info('Testing with {}'.format(cutout_file_name_path))
 
     # Write out a test file with the test result FITS data.
     with open(cutout_file_name_path, 'ab+') as test_file_handle:
-        test_subject.cutout(target_file_name, cutout_regions, output_writer=test_file_handle)
+        test_subject.cutout(target_file_name, cutout_regions,
+                            output_writer=test_file_handle)
         test_file_handle.close()
 
     with fits.open(expected_circle_cutout_file_name, mode='readonly') as expected_hdu_list, fits.open(cutout_file_name_path, mode='readonly') as result_hdu_list:
@@ -114,19 +116,30 @@ def _check_multiextension_circle_output_file(cutout_regions):
         np.testing.assert_array_equal(
             (), fits_diff.diff_hdu_count, 'HDU count diff should be empty.')
 
-        for extension, result_hdu in enumerate(result_hdu_list):
+        result_hdu_iter = iter(result_hdu_list[:])
+        result_primary_hdu = next(result_hdu_iter)
+
+        assert result_primary_hdu.header['NAXIS'] == 0, 'Wrong primary NAXIS value.'
+
+        for extension, result_hdu in enumerate(result_hdu_iter, start=1):
+            logger.info('Checking extension {}'.format(extension))
             expected_hdu = expected_hdu_list[extension]
-            expected_wcs = WCS(header=expected_hdu.header, naxis=2)
-            result_wcs = WCS(header=result_hdu.header, naxis=2)
+
+            assert result_hdu.header.get('DATASUM') is None, 'DATASUM should be absent.'
+            assert result_hdu.header.get('CHECKSUM') is None, 'CHECKSUM should be absent.'
+            assert result_hdu.header.get('CD1_1') is None, 'CD1_1 deprecated header should be absent'
+            assert result_hdu.header.get('CD1_2') is None, 'CD1_2 deprecated header should be absent'
+
+            expected_wcs = WCS(header=expected_hdu.header)
+            result_wcs = WCS(header=result_hdu.header)
 
             np.testing.assert_array_equal(
                 expected_wcs.wcs.crpix, result_wcs.wcs.crpix, 'Wrong CRPIX values.')
-            assert expected_hdu.header['NAXIS1'] == result_hdu.header['NAXIS1'], 'Wrong NAXIS1 values.'
-            assert expected_hdu.header['NAXIS2'] == result_hdu.header['NAXIS2'], 'Wrong NAXIS2 values.'
+            assert expected_hdu.header['NAXIS'] == result_hdu.header['NAXIS'], 'Wrong NAXIS value.'
             np.testing.assert_array_equal(
                 np.squeeze(expected_hdu.data), result_hdu.data, 'Arrays do not match.')
 
-        if not KEEP_TEST_FILES:
+        if REMOVE_TEST_FILES:
             os.remove(cutout_file_name_path)
 
 
@@ -177,4 +190,3 @@ def test_circle_multiextension_no_content_cutout():
         result_message = '{}'.format(err)
         assert expected_message == result_message, 'Wrong error (expected {}).'.format(
             expected_message)
-

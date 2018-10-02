@@ -72,7 +72,7 @@ from __future__ import (absolute_import, division, print_function,
 
 import logging
 import os
-import math
+import re
 import regions
 import numpy as np
 from enum import Enum
@@ -86,6 +86,8 @@ from regions.shapes.circle import CircleSkyRegion, CirclePixelRegion
 from regions.shapes.polygon import PolygonSkyRegion, PolygonPixelRegion
 
 from .no_content_error import NoContentError
+
+UNDESIREABLE_HEADER_KEYS = ['DATASUM', 'CHECKSUM']
 
 
 class BaseFileHelper(object):
@@ -131,14 +133,29 @@ class FITSHelper(BaseFileHelper):
 
     def __init__(self, file_path):
         self.logger = logging.getLogger()
-        self.logger.setLevel('INFO')
+        self.logger.setLevel('DEBUG')
         super(FITSHelper, self).__init__(file_path)
+
+    def _post_sanitize_header(self, header):
+        """
+        Remove headers that don't belong in the cutout output.
+        """
+        # Remove known keys
+        [header.remove(x, ignore_missing=True, remove_all=True)
+         for x in UNDESIREABLE_HEADER_KEYS]
+
+        pattern = re.compile(r'PC\d_\d')
+
+        # Remove the CDi_j headers in favour of the PCi_j equivalents
+        [header.remove(x[0].replace('PC', 'CD'), ignore_missing=True, remove_all=True)
+         for x in list(filter(lambda y: pattern.match(y[0]), header.cards))]
 
     def _cutout(self, header, data, wcs, position, size, output_writer):
         cutout_result = self.do_cutout(
             data=data, position=position, size=size, wcs=wcs)
 
         header.update(cutout_result.wcs.to_header())
+        self._post_sanitize_header(header)
         fits.append(filename=output_writer, header=header, data=cutout_result.data,
                     overwrite=False, output_verify='silentfix', checksum=False)
         output_writer.flush()
@@ -149,7 +166,7 @@ class FITSHelper(BaseFileHelper):
             try:
                 _bounding_box = pixel_cutout_region.bounding_box
             except ValueError as err:
-                self.logger.info(
+                self.logger.error(
                     'Unable to use HDU at extension {} due to error {}.'.format(extension, err))
                 return None
         elif isinstance(cutout_region, PixelRegion):
@@ -162,7 +179,6 @@ class FITSHelper(BaseFileHelper):
 
         box_offsets = self.get_bounding_box_offsets(cutout_region)
 
-        # Expand the box by one (1) pixel.
         return BoundingBox(
             (_bounding_box.ixmin +
              box_offsets[0]), (_bounding_box.ixmax + box_offsets[1]),
@@ -171,16 +187,21 @@ class FITSHelper(BaseFileHelper):
     def cutout(self, cutout_region, output_writer):
         with fits.open(self.file_path, mode='readonly', memmap=True) as hdu_list:
             cutouts_found = 0
-            primary_hdu = hdu_list[0]
-            fits.append(filename=output_writer, header=primary_hdu.header, data=np.empty((0,0)))
-            for extension, hdu in enumerate(hdu_list):
-                self.logger.info('Checking extension {}'.format(extension))
+            hdu_count = len(hdu_list)
+            hdu_iter = iter(hdu_list[:])
+            if hdu_count > 1:
+                self.logger.debug('MEF has {} HDUs'.format(hdu_count))
+                primary_hdu = next(hdu_iter)
+                fits.append(filename=output_writer, header=primary_hdu.header, data=None, overwrite=False,
+                            output_verify='silentfix', checksum=False)
+                start_index = 1
+            else:
+                start_index = 0
+
+            for extension, hdu in enumerate(hdu_iter, start=start_index):
                 if np.any(hdu.data) and hdu.data.size > 0:
                     header = hdu.header
                     wcs = WCS(header=header, naxis=2)
-                    self.logger.info(
-                        'Cutting out from extension {}'.format(extension))
-
                     bounding_box = self._to_bounding_box(
                         cutout_region, wcs, extension)
 
@@ -196,7 +217,9 @@ class FITSHelper(BaseFileHelper):
                         try:
                             self._cutout(header=header, data=hdu.data, wcs=wcs,
                                          position=position, size=size, output_writer=output_writer)
-                            cutouts_found = cutouts_found + 1
+                            self.logger.debug(
+                                'Cutting out from extension {}'.format(extension))
+                            cutouts_found += 1
                         except NoOverlapError:
                             self.logger.info(
                                 'No overlap found for extension {}'.format(extension))

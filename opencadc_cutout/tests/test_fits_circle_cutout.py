@@ -101,7 +101,7 @@ logger = logging.getLogger()
 
 def _check_circle_output_file(cutout_regions):
     test_subject = Cutout()
-    cutout_file_name_path = random_test_file_name_path(dir_name='/usr/src/app')
+    cutout_file_name_path = random_test_file_name_path()
     logger.info('Testing with {}'.format(cutout_file_name_path))
 
     # Write out a test file with the test result FITS data.
