@@ -70,6 +70,7 @@
 import logging
 import numpy as np
 
+from math import ceil
 from .range_parser import RangeParser
 
 
@@ -119,6 +120,6 @@ class PixelCutoutHDU(object):
         acc = []
         for dr in self.dimension_ranges:
             range_tuple = self.range_parser.parse(dr)
-            acc.append(int(np.round(range_tuple[0] + int(np.round(((range_tuple[1] - range_tuple[0]) / 2))))) - 1)
+            acc.append(int(ceil(range_tuple[0] - 0.5) + int(ceil(((range_tuple[1] - range_tuple[0]) / 2) - 0.5))) - 1)
 
         return tuple(acc)
