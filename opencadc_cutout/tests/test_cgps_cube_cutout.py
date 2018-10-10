@@ -76,37 +76,34 @@ import os
 import sys
 import pytest
 import tempfile
-import regions
 
 from astropy.io import fits
 from astropy.wcs import WCS
-from astropy import units as u
-from regions.core import PixCoord
-from regions.shapes.circle import CirclePixelRegion, CircleSkyRegion
-from astropy.coordinates import SkyCoord, Longitude, Latitude
 
 from .context import opencadc_cutout, random_test_file_name_path
-from opencadc_cutout.core import Cutout
+from opencadc_cutout.core import PixelCutout
+from opencadc_cutout.pixel_cutout_hdu import PixelCutoutHDU
 from opencadc_cutout.no_content_error import NoContentError
 
 
 pytest.main(args=['-s', os.path.abspath(__file__)])
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 TESTDATA_DIR = os.path.join(THIS_DIR, 'data')
-target_file_name = os.path.join(TESTDATA_DIR, 'test-cgps.fits')
+target_file_name = os.path.join(TESTDATA_DIR, 'test-cgps-cube.fits')
 expected_cutout_file_name = os.path.join(
-    TESTDATA_DIR, 'test-cgps-0__376_397_600_621____.fits')
+    TESTDATA_DIR, 'test-cgps-cube-0__200_400_500_1000_10_20.fits')
 logger = logging.getLogger()
 
 
-def _check_circle_output_file(cutout_regions):
-    test_subject = Cutout()
-    cutout_file_name_path = random_test_file_name_path()
+def test_cutout():
+    test_subject = PixelCutout()
+    cutout_file_name_path = random_test_file_name_path(dir_name='/usr/src/app')
     logger.info('Testing with {}'.format(cutout_file_name_path))
+    cutout_regions = [PixelCutoutHDU(['200:400', '500:1000', '70:80'])]
 
     # Write out a test file with the test result FITS data.
     with open(cutout_file_name_path, 'ab+') as test_file_handle:
-        test_subject.cutout(target_file_name, cutout_regions, test_file_handle)
+        test_subject.cutout(target_file_name, test_file_handle, cutout_regions)
         test_file_handle.close()
 
     with fits.open(expected_cutout_file_name, mode='readonly') as expected_hdu_list, fits.open(cutout_file_name_path, mode='readonly') as result_hdu_list:
@@ -116,56 +113,14 @@ def _check_circle_output_file(cutout_regions):
 
         for extension, result_hdu in enumerate(result_hdu_list):
             expected_hdu = expected_hdu_list[extension]
-            expected_wcs = WCS(header=expected_hdu.header, naxis=2)
-            result_wcs = WCS(header=result_hdu.header, naxis=2)
+            expected_wcs = WCS(header=expected_hdu.header)
+            result_wcs = WCS(header=result_hdu.header)
 
             np.testing.assert_array_equal(
                 expected_wcs.wcs.crpix, result_wcs.wcs.crpix, 'Wrong CRPIX values.')
+            np.testing.assert_array_equal(
+                expected_wcs.wcs.crval, result_wcs.wcs.crval, 'Wrong CRVAL values.')
             assert expected_hdu.header['NAXIS1'] == result_hdu.header['NAXIS1'], 'Wrong NAXIS1 values.'
             assert expected_hdu.header['NAXIS2'] == result_hdu.header['NAXIS2'], 'Wrong NAXIS2 values.'
             np.testing.assert_array_equal(
                 np.squeeze(expected_hdu.data), result_hdu.data, 'Arrays do not match.')
-
-
-def test_circle_pixel_cutout():
-    """
-    Test a Pixel (PixCoord) circle.
-    """
-    logger.setLevel('DEBUG')
-    cutout_region = CirclePixelRegion(
-        PixCoord(x=386.2794725953952, y=610.3341259408464), radius=10.0000003)
-    cutout_regions = [cutout_region]
-    _check_circle_output_file(cutout_regions)
-
-
-def test_circle_wcs_cutout():
-    """
-    Test a WCS (SkyCoord) circle.
-    """
-    logger.setLevel('DEBUG')
-    frame = 'ICRS'.lower()
-    ra = Longitude(9.0, unit=u.deg)
-    dec = Latitude(66.3167, unit=u.deg)
-    radius = u.Quantity(0.05, unit=u.deg)
-    sky_position = SkyCoord(ra=ra, dec=dec, frame=frame)
-    cutout_region = CircleSkyRegion(sky_position, radius=radius)
-    cutout_regions = [cutout_region]
-    _check_circle_output_file(cutout_regions)
-
-
-def test_circle_no_content_cutout():
-    """
-    Test an invalid cutout.
-    """
-    logger.setLevel('DEBUG')
-    cutout_region = CirclePixelRegion(center=PixCoord(x=200, y=-200), radius=1.1)
-    cutout_regions = [cutout_region]
-    try:
-        _check_circle_output_file(cutout_regions)
-        assert False, 'Should raise NoContentError.'
-    except NoContentError as err:
-        expected_message = 'No content (arrays do not overlap).'
-        result_message = '{}'.format(err)
-        assert expected_message == result_message, 'Wrong error (expected {}).'.format(
-            expected_message)
-

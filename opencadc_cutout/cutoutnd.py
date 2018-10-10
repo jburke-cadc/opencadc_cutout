@@ -70,21 +70,77 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
-import os
+import logging
+import numpy as np
 
-from enum import Enum
-from .file_helpers.fits.fits_file_helper import FITSHelper
+from copy import deepcopy
+
+from astropy.nddata.utils import extract_array, Cutout2D
+from .range_parser import RangeParser
 
 
-class FileTypeHelpers(Enum):
+class CutoutResult(object):
     """
-    Supported file types with their respective file helper classes.  Add more as necessary.
+    Just a DTO to move results of a cutout.  It's more readable than a plain tuple.
     """
-    FITS = FITSHelper
+
+    def __init__(self, data, wcs=None):
+        self.data = data
+        self.wcs = wcs
 
 
-class FileHelperFactory(object):
-    def get_instance(self, file_path):
-        _, extension = os.path.splitext(file_path)
-        helper_class = FileTypeHelpers[extension.split('.')[1].upper()].value
-        return helper_class(file_path)
+class CutoutND(object):
+    """
+      Parameters
+      ----------
+      data : `~numpy.ndarray`
+          The N-dimensional data array from which to extract the cutout array.
+      cutout_region : `PixelCutoutHDU`
+          The Pixel HDU Cutout description.  See opencadc_cutout.pixel_cutout_hdu.py.
+      wcs : `~astropy.wcs.WCS` or `None`
+          A WCS object associated with the cutout array.  If it's specified, reset the WCS values for the cutout.
+
+      Returns
+      -------
+      CutoutResult instance
+    """
+
+    def __init__(self, data, range_parser=RangeParser(), wcs=None):
+        self.logger = logging.getLogger()
+        self.logger.setLevel('DEBUG')
+        self.data = data
+        self.wcs = wcs
+        self.range_parser = range_parser
+
+    def extract(self, cutout_region):
+        requested_shape = cutout_region.get_shape()
+        requested_position = cutout_region.get_position()
+        data = np.asanyarray(self.data)
+
+        # reverse position because extract_array uses reverse ordering (i.e. x,y -> y,x).
+        # pos = list(map(lambda x: int(x / 2), requested_position))
+        # pos = list(reversed(list(map(lambda x: int(x / 2), requested_position))))
+        self.logger.info('Requested shape ({}) and position ({})'.format(
+            requested_shape, requested_position))
+        pos = list(reversed(requested_position))
+        shp = list(reversed(requested_shape))
+        self.logger.info(
+            'Extract shape ({}) and position ({})'.format(shp, pos))
+        self.logger.info('CRPIX is {}'.format(self.wcs.wcs.crpix))
+        cutout_data = extract_array(data, shp, pos, mode='trim')
+
+        if self.wcs is not None:
+            output_wcs = deepcopy(self.wcs)
+            orig_crpix = output_wcs.wcs.crpix
+
+            for idx, r in enumerate(cutout_region.get_ranges()):
+                orig_crpix[idx] -= (r[0] - 1)
+
+            output_wcs._naxis = list(cutout_data.shape)
+            # if output_wcs.sip is not None:
+            #     output_wcs.sip = Sip(output_wcs.sip.a, output_wcs.sip.b, output_wcs.sip.ap,
+            #                          output_wcs.sip.bp, output_wcs.sip.crpix - self._origin_original_true)
+        else:
+            output_wcs = None
+
+        return CutoutResult(data=cutout_data, wcs=output_wcs)

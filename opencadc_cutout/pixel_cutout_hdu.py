@@ -67,24 +67,58 @@
 # ***********************************************************************
 #
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+import logging
+import numpy as np
 
-import os
-
-from enum import Enum
-from .file_helpers.fits.fits_file_helper import FITSHelper
+from .range_parser import RangeParser
 
 
-class FileTypeHelpers(Enum):
-    """
-    Supported file types with their respective file helper classes.  Add more as necessary.
-    """
-    FITS = FITSHelper
+class PixelCutoutHDU(object):
+    def __init__(self, dimension_ranges, range_parser=RangeParser(), extension=0):
+        """
+        A Pixel cutout.
+        :param dimension_ranges: list    Dimension ranges expressed as 'x:y' strings, or 'x' for single string value.
+        :param range_parser: RangeParser    RangeParser instance to use.
+        :param extension: tuple, int, string
+            The Extension specification to use.  If tuple, use (str, int) to get the nth count of the EXTNAME=str
+            extension.  If string, use the first extension with EXTNAME=string, or use int to get the extension[int].
+            This is zero (0) based.
+        """
+        self.logger = logging.getLogger()
+        self.logger.setLevel('DEBUG')
+        self.dimension_ranges = dimension_ranges
+        self.range_parser = range_parser
+        self.extension = extension
 
+    def get_ranges(self):
+        """
+        Obtain the range tuples.
+        """
+        acc = []
+        for dr in self.dimension_ranges:
+            range_tuple = self.range_parser.parse(dr)
+            acc.append((int(np.round(range_tuple[0])), int(np.round(range_tuple[1]))))
 
-class FileHelperFactory(object):
-    def get_instance(self, file_path):
-        _, extension = os.path.splitext(file_path)
-        helper_class = FileTypeHelpers[extension.split('.')[1].upper()].value
-        return helper_class(file_path)
+        return tuple(acc)
+
+    def get_shape(self):
+        """
+        Convert the given dimensions to a shape.
+        """
+        acc = []
+        for dr in self.dimension_ranges:
+            range_tuple = self.range_parser.parse(dr)
+            acc.append(int(np.round((range_tuple[1] - range_tuple[0]) + 1)))
+
+        return tuple(acc)
+
+    def get_position(self):
+        """
+        Convert the given dimensions to a position to extract.
+        """
+        acc = []
+        for dr in self.dimension_ranges:
+            range_tuple = self.range_parser.parse(dr)
+            acc.append(int(np.round(range_tuple[0] + int(np.round(((range_tuple[1] - range_tuple[0]) / 2))))) - 1)
+
+        return tuple(acc)

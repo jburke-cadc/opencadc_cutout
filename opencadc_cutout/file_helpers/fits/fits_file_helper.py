@@ -70,21 +70,88 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
-import os
+import logging
+import re
+import numpy as np
 
-from enum import Enum
-from .file_helpers.fits.fits_file_helper import FITSHelper
-
-
-class FileTypeHelpers(Enum):
-    """
-    Supported file types with their respective file helper classes.  Add more as necessary.
-    """
-    FITS = FITSHelper
+from astropy.io import fits
+from astropy.wcs import WCS
+from astropy.nddata import NoOverlapError
+from ..base_file_helper import BaseFileHelper
+from ...no_content_error import NoContentError
 
 
-class FileHelperFactory(object):
-    def get_instance(self, file_path):
-        _, extension = os.path.splitext(file_path)
-        helper_class = FileTypeHelpers[extension.split('.')[1].upper()].value
-        return helper_class(file_path)
+# Remove the DQ1 and DQ2 headers until the issue with wcslib is resolved:
+# https://github.com/astropy/astropy/issues/7828
+UNDESIREABLE_HEADER_KEYS = ['DATASUM', 'CHECKSUM', 'DQ1', 'DQ2']
+
+
+class FITSHelper(BaseFileHelper):
+
+    def __init__(self, file_path):
+        self.logger = logging.getLogger()
+        self.logger.setLevel('DEBUG')
+        super(FITSHelper, self).__init__(file_path)
+
+    def _post_sanitize_header(self, header):
+        """
+        Remove headers that don't belong in the cutout output.
+        """
+        # Remove known keys
+        [header.remove(x, ignore_missing=True, remove_all=True)
+         for x in UNDESIREABLE_HEADER_KEYS]
+
+        # If the PCi_j matrices were added, then ensure the CDi_j matrices are removed.
+        pattern = re.compile(r'PC\d_\d')
+
+        # Remove the CDi_j headers in favour of the PCi_j equivalents
+        [header.remove(x[0].replace('PC', 'CD'), ignore_missing=True, remove_all=True)
+         for x in list(filter(lambda y: pattern.match(y[0]), header.cards))]
+
+        # If a WCSAXES card exists, ensure that it comes before the CTYPE1 card.
+        wcsaxes_keyword = 'WCSAXES'
+        ctype1_keyword = 'CTYPE1'
+
+        # Only proceed with this if both the WCSAXES and CTYPE1 cards are present.
+        if header.get(wcsaxes_keyword) and header.get(ctype1_keyword):
+            wcsaxes_index = header.index(wcsaxes_keyword)
+            ctype1_index = header.index('CTYPE1')
+
+            if wcsaxes_index > ctype1_index:
+                existing_wcsaxes_value = header.get(wcsaxes_keyword)
+                header.remove(wcsaxes_keyword)
+                header.insert(
+                    ctype1_index, (wcsaxes_keyword, existing_wcsaxes_value))
+
+    def _cutout(self, header, data, cutout_dimension, wcs, output_writer):
+        cutout_result = self.do_cutout(
+            data=data, cutout_dimension=cutout_dimension, wcs=wcs)
+
+        header.update(cutout_result.wcs.to_header())
+        self._post_sanitize_header(header)
+        fits.append(filename=output_writer, header=header, data=cutout_result.data,
+                    overwrite=False, output_verify='silentfix', checksum=False)
+        output_writer.flush()
+
+    def cutout(self, cutout_dimension, output_writer):
+        extension = cutout_dimension.extension
+        hdu = fits.getdata(self.file_path, header=True,
+                           ext=extension, memmap=False)
+        cutouts_found = 0
+        hdu_data = hdu[0]
+
+        if np.any(hdu_data) and hdu_data.size > 0:
+            header = hdu[1]
+            wcs = WCS(header=header)
+            try:
+                self._cutout(header=header, data=hdu_data,
+                             cutout_dimension=cutout_dimension, wcs=wcs, output_writer=output_writer)
+                self.logger.debug(
+                    'Cutting out from extension {}'.format(extension))
+                cutouts_found += 1
+            except NoOverlapError:
+                self.logger.info(
+                    'No overlap found for extension {}'.format(extension))
+
+        if cutouts_found == 0:
+            raise NoContentError('No content (arrays do not overlap).')

@@ -70,21 +70,5 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
-import os
-
-from enum import Enum
-from .file_helpers.fits.fits_file_helper import FITSHelper
-
-
-class FileTypeHelpers(Enum):
-    """
-    Supported file types with their respective file helper classes.  Add more as necessary.
-    """
-    FITS = FITSHelper
-
-
-class FileHelperFactory(object):
-    def get_instance(self, file_path):
-        _, extension = os.path.splitext(file_path)
-        helper_class = FileTypeHelpers[extension.split('.')[1].upper()].value
-        return helper_class(file_path)
+class RangeParserError(ValueError):
+  pass

@@ -72,102 +72,31 @@ from __future__ import (absolute_import, division, print_function,
 
 import logging
 import numpy as np
-import os
-import sys
-import pytest
-import tempfile
-import regions
 
-from astropy.io import fits
-from astropy.wcs import WCS
-from astropy import units as u
-from regions.core import PixCoord
-from regions.shapes.polygon import PolygonPixelRegion, PolygonSkyRegion
-from astropy.coordinates import SkyCoord, Longitude, Latitude
-
-from .context import opencadc_cutout, random_test_file_name_path
-from opencadc_cutout.core import Cutout
-from opencadc_cutout.no_content_error import NoContentError
+from astropy.nddata.utils import Cutout2D, NoOverlapError
+from ..cutoutnd import CutoutND
 
 
-pytest.main(args=['-s', os.path.abspath(__file__)])
-THIS_DIR = os.path.dirname(os.path.realpath(__file__))
-TESTDATA_DIR = os.path.join(THIS_DIR, 'data')
-target_file_name = os.path.join(TESTDATA_DIR, 'test-cgps.fits')
-expected_cutout_file_name = os.path.join(
-    TESTDATA_DIR, 'test-cgps-polygon-cutout.fits')
-logger = logging.getLogger()
+class BaseFileHelper(object):
+    def __init__(self, file_path):
+        self.logger = logging.getLogger()
+        self.logger.setLevel('INFO')
+        if file_path is None or file_path == '':
+            raise ValueError('File path is required.')
+        else:
+            self.file_path = file_path
 
+    def do_cutout(self, data, cutout_dimension, wcs):
+        """
+        Perform a Cutout of the given data at the given position and size.
+        :param data:  The data to cutout from
+        :param cutout_dimension:  `PixelCutoutHDU`       Cutout object.
+        :param wcs:    The WCS object to use with the cutout to return a copy of the WCS object.
 
-def _check_polygon_output_file(cutout_regions):
-    test_subject = Cutout()
-    cutout_file_name_path = random_test_file_name_path()
-    logger.info('Testing with {}'.format(cutout_file_name_path))
+        :return: CutoutND instance
+        """
 
-    # Write out a test file with the test result FITS data.
-    with open(cutout_file_name_path, 'ab+') as test_file_handle:
-        test_subject.cutout(target_file_name, cutout_regions, test_file_handle)
-        test_file_handle.close()
-
-    with fits.open(expected_cutout_file_name, mode='readonly') as expected_hdu_list, fits.open(cutout_file_name_path, mode='readonly') as result_hdu_list:
-        fits_diff = fits.FITSDiff(expected_hdu_list, result_hdu_list)
-        np.testing.assert_array_equal(
-            (), fits_diff.diff_hdu_count, 'HDU count diff should be empty.')
-
-        for extension, result_hdu in enumerate(result_hdu_list):
-            expected_hdu = expected_hdu_list[extension]
-            expected_wcs = WCS(header=expected_hdu.header, naxis=2)
-            result_wcs = WCS(header=result_hdu.header, naxis=2)
-
-            np.testing.assert_array_equal(
-                expected_wcs.wcs.crpix, result_wcs.wcs.crpix, 'Wrong CRPIX values.')
-            assert expected_hdu.header['NAXIS1'] == result_hdu.header['NAXIS1'], 'Wrong NAXIS1 values.'
-            assert expected_hdu.header['NAXIS2'] == result_hdu.header['NAXIS2'], 'Wrong NAXIS2 values.'
-            np.testing.assert_array_equal(
-                np.squeeze(expected_hdu.data), result_hdu.data, 'Arrays do not match.')
-
-
-def test_polygon_pixel_cutout():
-    """
-    Test a Pixel (PixCoord) polygon.
-    """
-    logger.setLevel('DEBUG')
-    x, y = [376, 600, 405, 216], [397, 621, 740, 668]
-    vertices = PixCoord(x=x, y=y)
-    cutout_region = PolygonPixelRegion(vertices=vertices)
-    cutout_regions = [cutout_region]
-    _check_polygon_output_file(cutout_regions)
-
-
-def test_polygon_wcs_cutout():
-    """
-    Test a WCS (SkyCoord) polygon.
-    """
-    logger.setLevel('DEBUG')
-    frame = 'ICRS'.lower()
-    ra, dec = [9.27403199, 6.3392766, 8.66286563, 11.10050874] * \
-        u.deg, [65.25472033, 66.28375562, 66.95796478, 66.64119763] * u.deg
-    vertices = SkyCoord(ra=ra, dec=dec, frame=frame)
-    cutout_region = PolygonSkyRegion(vertices)
-    cutout_regions = [cutout_region]
-    _check_polygon_output_file(cutout_regions)
-
-
-def test_no_content_cutout():
-    """
-    Test an invalid cutout.
-    """
-    frame = 'ICRS'.lower()
-    logger.setLevel('DEBUG')
-    cutout_region = PolygonSkyRegion(
-        SkyCoord([3, 4, 3] * u.deg, [3, 4, 4] * u.deg, frame=frame))
-    cutout_regions = [cutout_region]
-    try:
-        _check_polygon_output_file(cutout_regions)
-        assert False, 'Should raise NoContentError.'
-    except NoContentError as err:
-        expected_message = 'No content (arrays do not overlap).'
-        result_message = '{}'.format(err)
-        assert expected_message == result_message, 'Wrong error (expected {}).'.format(
-            expected_message)
-
+        # Sanitize the array by removing the single-dimensional entries.
+        sanitized_data = np.squeeze(data)
+        c = CutoutND(data=sanitized_data, wcs=wcs)
+        return c.extract(cutout_dimension)

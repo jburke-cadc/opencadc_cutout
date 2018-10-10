@@ -70,21 +70,38 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
+import logging
+import numpy as np
 import os
+import sys
+import pytest
 
-from enum import Enum
-from .file_helpers.fits.fits_file_helper import FITSHelper
-
-
-class FileTypeHelpers(Enum):
-    """
-    Supported file types with their respective file helper classes.  Add more as necessary.
-    """
-    FITS = FITSHelper
+from opencadc_cutout.pixel_cutout_hdu import PixelCutoutHDU
 
 
-class FileHelperFactory(object):
-    def get_instance(self, file_path):
-        _, extension = os.path.splitext(file_path)
-        helper_class = FileTypeHelpers[extension.split('.')[1].upper()].value
-        return helper_class(file_path)
+def test_get_shape():
+    test_subject = PixelCutoutHDU(['1:200', '305:600'])
+    shape = test_subject.get_shape()
+    assert shape == (200, 296), 'Wrong shape output.'
+
+    test_subject = PixelCutoutHDU(['10:20', '30'])
+    shape = test_subject.get_shape()
+    assert shape == (11, 1), 'Wrong shape output.'
+
+def test_get_ranges():
+    test_subject = PixelCutoutHDU(['1:200', '305:600'])
+    ranges = test_subject.get_ranges()
+    assert ranges == ((1, 200), (305, 600)), 'Wrong ranges output.'
+
+    test_subject = PixelCutoutHDU(['10:20', '30'])
+    ranges = test_subject.get_ranges()
+    assert ranges == ((10, 20), (30, 30)), 'Wrong ranges output.'
+
+def test_get_position():
+    test_subject = PixelCutoutHDU(['1:200', '305:360', '400:1000'])
+    position = test_subject.get_position()
+    assert position == (99, 331, 699), 'Wrong position output.'
+
+    test_subject = PixelCutoutHDU(['10:20', '30', '400:406'])
+    position = test_subject.get_position()
+    assert position == (14, 29, 402), 'Wrong position output.'

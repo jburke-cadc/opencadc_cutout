@@ -70,21 +70,68 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
-import os
-
-from enum import Enum
-from .file_helpers.fits.fits_file_helper import FITSHelper
-
-
-class FileTypeHelpers(Enum):
-    """
-    Supported file types with their respective file helper classes.  Add more as necessary.
-    """
-    FITS = FITSHelper
+import itertools
+import logging
+import re
+import numpy
+from .range_parser_error import RangeParserError
 
 
-class FileHelperFactory(object):
-    def get_instance(self, file_path):
-        _, extension = os.path.splitext(file_path)
-        helper_class = FileTypeHelpers[extension.split('.')[1].upper()].value
-        return helper_class(file_path)
+class RangeParser(object):
+
+    def __init__(self, delimiter=':'):
+        self.logger = logging.getLogger()
+        self.logger.setLevel('DEBUG')
+        self.delimiter = delimiter
+
+    def parse(self, range_str):
+        """
+        Parse a string range.
+        :param  range_str: The string to parse.
+
+        Example:
+
+        rp = RangeParser()
+        rp.parse('1')
+        => (1,1)
+
+        rp.parse('99:112')
+        => (99,112)
+        """
+        rs = range_str.strip()
+        expected_pattern = re.compile(r'\d+[:\d+]')
+
+        if not re.match(expected_pattern, range_str):
+            raise RangeParserError(
+                'Invalid range specified.  Should be in the format of {} (i.e. 8:35), or single digit (i.e. 9).'.format(expected_pattern))
+
+        if self.delimiter not in rs:
+            rs = rs + self.delimiter + rs  # Turns 7 into 7..7
+
+        start, end = rs.split(self.delimiter)
+
+        if not start or not end:
+            raise RangeParserError('Incomplete range specified {}'.format(rs))
+        else:
+            return (int(start), int(end))
+
+    def expand(self, range_str):
+        """
+        Expand a string range.
+        :param  range_str: The string to expand.
+
+        Example:
+
+        rp = RangeParser()
+        rp.parse('1')
+        => array([1])
+
+        rp.parse('99:112')
+        => array([99,100,101,102,103,104,105,106,107,108,109,110,111,112])
+        """
+        start, end = self.parse(range_str)
+
+        if not start or not end:
+            raise RangeParserError('Incomplete range specified {}'.format(range_str))
+        else:
+            return [numpy.arange(start=start, stop=end + 1)]

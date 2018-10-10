@@ -69,22 +69,25 @@
 
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-
+import pytest
 import os
+import numpy as np
 
-from enum import Enum
-from .file_helpers.fits.fits_file_helper import FITSHelper
+from .context import opencadc_cutout
+from opencadc_cutout.range_parser import RangeParser
+from opencadc_cutout.range_parser_error import RangeParserError
 
-
-class FileTypeHelpers(Enum):
-    """
-    Supported file types with their respective file helper classes.  Add more as necessary.
-    """
-    FITS = FITSHelper
+pytest.main(args=['-s', os.path.abspath(__file__)])
 
 
-class FileHelperFactory(object):
-    def get_instance(self, file_path):
-        _, extension = os.path.splitext(file_path)
-        helper_class = FileTypeHelpers[extension.split('.')[1].upper()].value
-        return helper_class(file_path)
+def test_expand():
+  test_subject = RangeParser()
+  result = list(test_subject.expand('9:16'))
+
+  np.testing.assert_array_equal(result[0], [9, 10, 11, 12, 13, 14, 15, 16], 'Wrong array.')
+
+  try:
+    test_subject.expand('0 9')
+    assert False, 'Should throw RangeParserError.'
+  except RangeParserError:
+    assert True

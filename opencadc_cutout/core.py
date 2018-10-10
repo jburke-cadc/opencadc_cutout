@@ -68,37 +68,35 @@
 #
 
 import logging
-import numpy as np
 
-from astropy.nddata import Cutout2D
-from astropy.wcs import WCS
-from astropy.coordinates import SkyCoord
 from .file_helper import FileHelperFactory
 
 
-class Cutout(object):
+class PixelCutout(object):
     """
     Base cutout class.  This is mainly used as a parent class for concrete instances, like from a FITS file, but
     can be called by itself if need be.
     """
 
-    def __init__(self):
+    def __init__(self, helper_factory=FileHelperFactory()):
         logging.getLogger().setLevel('INFO')
         self.logger = logging.getLogger(__name__)
-        self.helper_factory = FileHelperFactory()
+        self.helper_factory = helper_factory
 
-    def cutout(self, file_path, cutout_regions, output_writer, file_args=None):
+    def cutout(self, file_path, output_writer, cutout_dimensions):
         """
         Perform a Cutout of the given data at the given position and size.
-        :param file_path:   The file location.  The file extension is important as it's used to determine how to process it.
-        :param cutout_regions   Array of cutout regions to apply.  This can be a single Circle or Polygon, or for Interval cutouts it will be data type specific arrays.
-        :param output_writer:   The writer to push the cutout array to.
-        :param file_args:   The file specific arguments.  (e.g. extensions=[0,3] for FITS)
+        :param file_path: string
+            The file location.  The file extension is important as it's used to determine how to process it.
+        :param output_writer: File object, Writer
+                The writer to push the cutout array to.
+        :param cutout_dimensions: list of PixelCutoutHDU
+            The requested dimensions expressed as PixelCutoutHDU objects.
         """
         file_helper = self._get_file_helper(file_path)
 
-        for cutout_region in cutout_regions:
-            file_helper.cutout(cutout_region, output_writer)
+        for cutout_dimension in cutout_dimensions:
+            file_helper.cutout(cutout_dimension, output_writer)
 
     def _get_file_helper(self, file_path):
         return self.helper_factory.get_instance(file_path)

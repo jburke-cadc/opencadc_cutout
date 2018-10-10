@@ -75,118 +75,55 @@ import numpy as np
 import os
 import sys
 import pytest
-import regions
+import tempfile
 
 from astropy.io import fits
 from astropy.wcs import WCS
-from astropy import units as u
-from regions.core import PixCoord
-from regions.shapes.circle import CirclePixelRegion, CircleSkyRegion
-from astropy.coordinates import SkyCoord, Longitude, Latitude
 
 from .context import opencadc_cutout, random_test_file_name_path
-from opencadc_cutout.core import Cutout
+from opencadc_cutout.core import PixelCutout
+from opencadc_cutout.pixel_cutout_hdu import PixelCutoutHDU
 from opencadc_cutout.no_content_error import NoContentError
 
 
 pytest.main(args=['-s', os.path.abspath(__file__)])
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 TESTDATA_DIR = os.path.join(THIS_DIR, 'data')
-target_file_name = os.path.join(TESTDATA_DIR, 'test-macho-multiextension.fits')
-expected_circle_cutout_file_name = os.path.join(
-    TESTDATA_DIR, 'test-macho-multiextension-cutout.fits')
+target_file_name = os.path.join(TESTDATA_DIR, 'test-cgps.fits')
+# expected_cutout_file_name = os.path.join(
+    # TESTDATA_DIR, 'test-cgps-0__376_397_600_621____.fits')
+expected_cutout_file_name = os.path.join(
+    TESTDATA_DIR, 'test-cgps-0__300_800_810_1000____.fits')
 logger = logging.getLogger()
-logger.setLevel('DEBUG')
-REMOVE_TEST_FILES = False
 
 
-def _check_multiextension_circle_output_file(cutout_regions):
-    test_subject = Cutout()
+def test_cutout():
+    test_subject = PixelCutout()
     cutout_file_name_path = random_test_file_name_path(dir_name='/usr/src/app')
     logger.info('Testing with {}'.format(cutout_file_name_path))
+    cutout_regions = [PixelCutoutHDU(['300:800', '810:1000'])]
 
     # Write out a test file with the test result FITS data.
     with open(cutout_file_name_path, 'ab+') as test_file_handle:
-        test_subject.cutout(target_file_name, cutout_regions,
-                            output_writer=test_file_handle)
+        test_subject.cutout(target_file_name, test_file_handle, cutout_regions)
         test_file_handle.close()
 
-    with fits.open(expected_circle_cutout_file_name, mode='readonly') as expected_hdu_list, fits.open(cutout_file_name_path, mode='readonly') as result_hdu_list:
+    with fits.open(expected_cutout_file_name, mode='readonly') as expected_hdu_list, fits.open(cutout_file_name_path, mode='readonly') as result_hdu_list:
         fits_diff = fits.FITSDiff(expected_hdu_list, result_hdu_list)
         np.testing.assert_array_equal(
             (), fits_diff.diff_hdu_count, 'HDU count diff should be empty.')
 
-        result_hdu_iter = iter(result_hdu_list[:])
-        result_primary_hdu = next(result_hdu_iter)
-
-        assert result_primary_hdu.header['NAXIS'] == 0, 'Wrong primary NAXIS value.'
-
-        for extension, result_hdu in enumerate(result_hdu_iter, start=1):
-            logger.info('Checking extension {}'.format(extension))
+        for extension, result_hdu in enumerate(result_hdu_list):
             expected_hdu = expected_hdu_list[extension]
-
-            assert result_hdu.header.get('DATASUM') is None, 'DATASUM should be absent.'
-            assert result_hdu.header.get('CHECKSUM') is None, 'CHECKSUM should be absent.'
-            assert result_hdu.header.get('CD1_1') is None, 'CD1_1 deprecated header should be absent'
-            assert result_hdu.header.get('CD1_2') is None, 'CD1_2 deprecated header should be absent'
-
             expected_wcs = WCS(header=expected_hdu.header)
             result_wcs = WCS(header=result_hdu.header)
+            logger.info('Expected CRPIX is {}'.format(expected_wcs.wcs.crpix))
 
             np.testing.assert_array_equal(
                 expected_wcs.wcs.crpix, result_wcs.wcs.crpix, 'Wrong CRPIX values.')
-            assert expected_hdu.header['NAXIS'] == result_hdu.header['NAXIS'], 'Wrong NAXIS value.'
+            np.testing.assert_array_equal(
+                expected_wcs.wcs.crval, result_wcs.wcs.crval, 'Wrong CRVAL values.')
+            assert expected_hdu.header['NAXIS1'] == result_hdu.header['NAXIS1'], 'Wrong NAXIS1 values.'
+            assert expected_hdu.header['NAXIS2'] == result_hdu.header['NAXIS2'], 'Wrong NAXIS2 values.'
             np.testing.assert_array_equal(
                 np.squeeze(expected_hdu.data), result_hdu.data, 'Arrays do not match.')
-
-        if REMOVE_TEST_FILES:
-            os.remove(cutout_file_name_path)
-
-
-# def test_circle_multiextension_pixel_cutout():
-#     """
-#     Test a Pixel (PixCoord) circle.
-#     """
-#     logger.setLevel('DEBUG')
-#     cutout_region = CirclePixelRegion(
-#         PixCoord(x=-4047.080771551746, y=3246.427408057409), radius=62.13178613301123)
-#     cutout_regions = [cutout_region]
-#     _check_multiextension_circle_output_file(cutout_regions)
-
-
-def test_circle_multiextension_wcs_cutout():
-    """
-    Test a WCS (SkyCoord) circle.
-    """
-    logger.setLevel('DEBUG')
-    frame = 'ICRS'.lower()
-    ra = Longitude(83.2793, unit=u.deg)
-    dec = Latitude(-70.8952, unit=u.deg)
-    radius = u.Quantity(0.3, unit=u.deg)
-    sky_position = SkyCoord(ra=ra, dec=dec, frame=frame)
-    cutout_region = CircleSkyRegion(sky_position, radius=radius)
-    # with fits.open(target_file_name, memmap=True) as expected_hdu_list:
-    #     wcs = WCS(header=expected_hdu_list[0].header, naxis=2)
-    #     pix_region = cutout_region.to_pixel(wcs)
-    #     logger.info('Pix: {}'.format(pix_region))
-
-    cutout_regions = [cutout_region]
-    _check_multiextension_circle_output_file(cutout_regions)
-
-
-def test_circle_multiextension_no_content_cutout():
-    """
-    Test an invalid cutout.
-    """
-    logger.setLevel('DEBUG')
-    cutout_region = CirclePixelRegion(
-        center=PixCoord(x=200, y=-200), radius=1.1)
-    cutout_regions = [cutout_region]
-    try:
-        _check_multiextension_circle_output_file(cutout_regions)
-        assert False, 'Should raise NoContentError.'
-    except NoContentError as err:
-        expected_message = 'No content (arrays do not overlap).'
-        result_message = '{}'.format(err)
-        assert expected_message == result_message, 'Wrong error (expected {}).'.format(
-            expected_message)
