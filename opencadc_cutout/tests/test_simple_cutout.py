@@ -117,7 +117,6 @@ def test_cutout():
             expected_hdu = expected_hdu_list[extension]
             expected_wcs = WCS(header=expected_hdu.header)
             result_wcs = WCS(header=result_hdu.header)
-            logger.info('Expected CRPIX is {}'.format(expected_wcs.wcs.crpix))
 
             np.testing.assert_array_equal(
                 expected_wcs.wcs.crpix, result_wcs.wcs.crpix, 'Wrong CRPIX values.')

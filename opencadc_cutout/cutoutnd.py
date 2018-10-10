@@ -118,15 +118,8 @@ class CutoutND(object):
         data = np.asanyarray(self.data)
 
         # reverse position because extract_array uses reverse ordering (i.e. x,y -> y,x).
-        # pos = list(map(lambda x: int(x / 2), requested_position))
-        # pos = list(reversed(list(map(lambda x: int(x / 2), requested_position))))
-        self.logger.info('Requested shape ({}) and position ({})'.format(
-            requested_shape, requested_position))
         pos = list(reversed(requested_position))
         shp = list(reversed(requested_shape))
-        self.logger.info(
-            'Extract shape ({}) and position ({})'.format(shp, pos))
-        self.logger.info('CRPIX is {}'.format(self.wcs.wcs.crpix))
         cutout_data = extract_array(data, shp, pos, mode='trim')
 
         if self.wcs is not None:
