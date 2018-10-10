@@ -99,7 +99,7 @@ logger = logging.getLogger()
 
 def test_cutout():
     test_subject = PixelCutout()
-    cutout_file_name_path = random_test_file_name_path(dir_name='/usr/src/app')
+    cutout_file_name_path = random_test_file_name_path()
     logger.info('Testing with {}'.format(cutout_file_name_path))
     cutout_regions = [PixelCutoutHDU(['300:800', '810:1000'])]
 
