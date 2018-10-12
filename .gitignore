@@ -1,3 +1,4 @@
 .eggs
 .pytest*
 *.fits
+github_issue.py
