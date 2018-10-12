@@ -73,7 +73,9 @@ from __future__ import (absolute_import, division, print_function,
 import logging
 import re
 import numpy as np
+import time
 
+from copy import copy
 from astropy.io import fits
 from astropy.wcs import WCS
 from astropy.nddata import NoOverlapError
@@ -81,9 +83,12 @@ from ..base_file_helper import BaseFileHelper
 from ...no_content_error import NoContentError
 
 
+def current_milli_time(): return int(round(time.time() * 1000))
+
+
 # Remove the DQ1 and DQ2 headers until the issue with wcslib is resolved:
 # https://github.com/astropy/astropy/issues/7828
-UNDESIREABLE_HEADER_KEYS = ['DATASUM', 'CHECKSUM', 'DQ1', 'DQ2']
+UNDESIREABLE_HEADER_KEYS = ['DQ1', 'DQ2']
 
 
 class FITSHelper(BaseFileHelper):
@@ -93,7 +98,7 @@ class FITSHelper(BaseFileHelper):
         self.logger.setLevel('DEBUG')
         super(FITSHelper, self).__init__(file_path)
 
-    def _post_sanitize_header(self, header):
+    def _post_sanitize_header(self, header, original_header):
         """
         Remove headers that don't belong in the cutout output.
         """
@@ -127,31 +132,32 @@ class FITSHelper(BaseFileHelper):
         cutout_result = self.do_cutout(
             data=data, cutout_dimension=cutout_dimension, wcs=wcs)
 
+        original_header = copy(header)
         header.update(cutout_result.wcs.to_header())
-        self._post_sanitize_header(header)
+        self._post_sanitize_header(header, original_header)
         fits.append(filename=output_writer, header=header, data=cutout_result.data,
-                    overwrite=False, output_verify='silentfix', checksum=False)
+                    overwrite=False, output_verify='exception', checksum='remove')
         output_writer.flush()
 
     def cutout(self, cutout_dimension, output_writer):
         extension = cutout_dimension.extension
+        start_time = current_milli_time()
+
+        self.logger.debug('Starting load at {}'.format(start_time))
         hdu = fits.getdata(self.file_path, header=True,
-                           ext=extension, memmap=False)
-        cutouts_found = 0
-        hdu_data = hdu[0]
+                           ext=extension, memmap=True, do_not_scale_image_data=True)
+        end_time = current_milli_time()
+        self.logger.debug(
+            'End load at {} - ({} seconds)'.format(end_time, (end_time - start_time) / 1000))
 
-        if np.any(hdu_data) and hdu_data.size > 0:
-            header = hdu[1]
-            wcs = WCS(header=header)
-            try:
-                self._cutout(header=header, data=hdu_data,
-                             cutout_dimension=cutout_dimension, wcs=wcs, output_writer=output_writer)
-                self.logger.debug(
-                    'Cutting out from extension {}'.format(extension))
-                cutouts_found += 1
-            except NoOverlapError:
-                self.logger.info(
-                    'No overlap found for extension {}'.format(extension))
-
-        if cutouts_found == 0:
+        header = hdu[1]
+        wcs = WCS(header=header)
+        try:
+            self._cutout(header=header, data=hdu[0],
+                         cutout_dimension=cutout_dimension, wcs=wcs, output_writer=output_writer)
+            self.logger.debug(
+                'Cutting out from extension {}'.format(extension))
+        except NoOverlapError:
+            self.logger.error(
+                'No overlap found for extension {}'.format(extension))
             raise NoContentError('No content (arrays do not overlap).')

@@ -112,22 +112,44 @@ class CutoutND(object):
         self.wcs = wcs
         self.range_parser = range_parser
 
-    def extract(self, cutout_region):
+    def _get_position_shape(self, data_shape, cutout_region):
         requested_shape = cutout_region.get_shape()
         requested_position = cutout_region.get_position()
-        data = np.asanyarray(self.data)
 
         # reverse position because extract_array uses reverse ordering (i.e. x,y -> y,x).
-        pos = list(reversed(requested_position))
-        shp = list(reversed(requested_shape))
-        cutout_data = extract_array(data, shp, pos, mode='trim')
+        r_position = tuple(reversed(requested_position))
+        r_shape = tuple(reversed(requested_shape))
+
+        len_data = len(data_shape)
+        len_pos = len(r_position)
+        len_shape = len(r_shape)
+
+        if len_shape > len_data:
+            raise ValueError('Invalid shape requested (tried to extract {} from {}).'.format(
+                r_shape, data_shape))
+
+        shape = (data_shape[:(len_data - len_shape)]) + r_shape
+
+        if len_pos > len_data:
+            raise ValueError('Invalid position requested (tried to extract {} from {}).'.format(
+                r_position, data_shape))
+
+        position = (data_shape[:(len_data - len_pos)]) + r_position
+
+        return (tuple(position), tuple(shape))
+
+    def extract(self, cutout_region):
+        data = np.asanyarray(self.data)
+        data_shape = data.shape
+        position, shape = self._get_position_shape(data_shape, cutout_region)
+        cutout_data = extract_array(data, shape, position, mode='trim')
 
         if self.wcs is not None:
             output_wcs = deepcopy(self.wcs)
-            orig_crpix = output_wcs.wcs.crpix
+            wcs_crpix = output_wcs.wcs.crpix
 
             for idx, r in enumerate(cutout_region.get_ranges()):
-                orig_crpix[idx] -= (r[0] - 1)
+                wcs_crpix[idx] -= (r[0] - 1)
 
             output_wcs._naxis = list(cutout_data.shape)
             # if output_wcs.sip is not None:

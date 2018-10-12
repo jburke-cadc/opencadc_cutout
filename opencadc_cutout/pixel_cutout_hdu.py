@@ -75,7 +75,7 @@ from .range_parser import RangeParser
 
 
 class PixelCutoutHDU(object):
-    def __init__(self, dimension_ranges, range_parser=RangeParser(), extension=0):
+    def __init__(self, dimension_ranges, extension=0, range_parser=RangeParser()):
         """
         A Pixel cutout.
         :param dimension_ranges: list    Dimension ranges expressed as 'x:y' strings, or 'x' for single string value.

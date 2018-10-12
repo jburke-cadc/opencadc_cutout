@@ -90,14 +90,12 @@ pytest.main(args=['-s', os.path.abspath(__file__)])
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 TESTDATA_DIR = os.path.join(THIS_DIR, 'data')
 target_file_name = os.path.join(TESTDATA_DIR, 'test-cgps.fits')
-# expected_cutout_file_name = os.path.join(
-    # TESTDATA_DIR, 'test-cgps-0__376_397_600_621____.fits')
 expected_cutout_file_name = os.path.join(
     TESTDATA_DIR, 'test-cgps-0__300_800_810_1000____.fits')
 logger = logging.getLogger()
 
 
-def test_cutout():
+def test_simple_cutout():
     test_subject = PixelCutout()
     cutout_file_name_path = random_test_file_name_path()
     logger.info('Testing with {}'.format(cutout_file_name_path))
@@ -124,5 +122,9 @@ def test_cutout():
                 expected_wcs.wcs.crval, result_wcs.wcs.crval, 'Wrong CRVAL values.')
             assert expected_hdu.header['NAXIS1'] == result_hdu.header['NAXIS1'], 'Wrong NAXIS1 values.'
             assert expected_hdu.header['NAXIS2'] == result_hdu.header['NAXIS2'], 'Wrong NAXIS2 values.'
+            assert expected_hdu.header.get(
+                'CHECKSUM') is None, 'Should not contain CHECKSUM.'
+            assert expected_hdu.header.get(
+                'DATASUM') is None, 'Should not contain DATASUM.'
             np.testing.assert_array_equal(
                 np.squeeze(expected_hdu.data), result_hdu.data, 'Arrays do not match.')
