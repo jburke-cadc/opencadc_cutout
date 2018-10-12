@@ -142,7 +142,7 @@ class CutoutND(object):
         data = np.asanyarray(self.data)
         data_shape = data.shape
         position, shape = self._get_position_shape(data_shape, cutout_region)
-        cutout_data = extract_array(data, shape, position, mode='trim')
+        cutout_data = extract_array(data, shape, position, mode='partial')
 
         if self.wcs is not None:
             output_wcs = deepcopy(self.wcs)
@@ -151,10 +151,11 @@ class CutoutND(object):
             for idx, r in enumerate(cutout_region.get_ranges()):
                 wcs_crpix[idx] -= (r[0] - 1)
 
-            output_wcs._naxis = list(cutout_data.shape)
-            # if output_wcs.sip is not None:
-            #     output_wcs.sip = Sip(output_wcs.sip.a, output_wcs.sip.b, output_wcs.sip.ap,
-            #                          output_wcs.sip.bp, output_wcs.sip.crpix - self._origin_original_true)
+            cutout_shape = cutout_data.shape
+            self.logger.debug('Cutout shape is {}'.format(cutout_shape))
+            self.logger.debug('Requested shape is {}'.format(shape))
+
+            output_wcs._naxis = list(cutout_shape)
         else:
             output_wcs = None
 
