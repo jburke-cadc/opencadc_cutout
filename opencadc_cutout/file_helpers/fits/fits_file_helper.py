@@ -191,51 +191,54 @@ class FITSHelper(BaseFileHelper):
         requested_extension = cutout_dimension.extension
         return (extension_name_idx is not None and extension_name_idx == requested_extension) or str(extension_idx) == requested_extension
 
-    def _iterate_pixel_cutout(self, cutout_dimensions):
-        if len(cutout_dimensions) == 1:
-            cutout_dimension = cutout_dimensions[0]
-            hdu = fits.getdata(self.input_stream, header=True,
-                               ext=cutout_dimension.extension, memmap=True, do_not_scale_image_data=True)
-            self._pixel_cutout(hdu, cutout_dimension)
-        else:
-            curr_extension = 0
+    def _iterate_cutout(self, pixel_cutout_dimensions):
+        curr_extension = 0
 
-            # Tally the extension names to ensure a match for the case of extension name and index (i.e. [SCI,3]).
-            ext_name_dict = {}
+        # Tally the extension names to ensure a match for the case of extension name and index (i.e. [SCI,3]).
+        ext_name_dict = {}
 
-            # Start with the first extension
-            hdu = fits.getdata(self.input_stream, header=True,
-                               ext=curr_extension, memmap=True, do_not_scale_image_data=True)
+        # Start with the first extension
+        hdu = fits.getdata(self.input_stream, header=True,
+                            ext=curr_extension, memmap=True, do_not_scale_image_data=True)
 
-            while hdu is not None:
-                if isinstance(hdu, fits.ImageHDU):
-                    header = hdu[1]
-                    ext_name = header.get('EXTNAME')
-                    ext_name_idx = None
+        while hdu is not None:
+            if isinstance(hdu, fits.ImageHDU):
+                header = hdu[1]
+                ext_name = header.get('EXTNAME')
+                ext_name_idx = None
 
-                    if ext_name is not None:
-                        if not ext_name in ext_name_dict:
-                            ext_name_dict[ext_name] = 1
-                        else:
-                            ext_name_dict[ext_name] += 1
+                if ext_name is not None:
+                    if not ext_name in ext_name_dict:
+                        ext_name_dict[ext_name] = 1
+                    else:
+                        ext_name_dict[ext_name] += 1
 
-                        ext_name_idx = '{},{}'.format(
-                            ext_name, ext_name_dict[ext_name])
+                    ext_name_idx = '{},{}'.format(
+                        ext_name, ext_name_dict[ext_name])
 
-                    for cutout_dimension in cutout_dimensions:
+                if pixel_cutout_dimensions is None:
+                    # TODO - Do WCS transformation and check for overlap.
+                    pass
+                else:
+                    for cutout_dimension in pixel_cutout_dimensions:
                         if self._is_extension_requested(curr_extension, ext_name_idx, cutout_dimension):
                             self._pixel_cutout(hdu, cutout_dimension)
 
-                curr_extension += 1
+            curr_extension += 1
 
-    def _iterate_wcs_cutout(self):
-        pass
+    def _iterate_pixel_cutout(self, pixel_cutout_dimensions):
+        if pixel_cutout_dimensions is not None and len(pixel_cutout_dimensions) == 1:
+            cutout_dimension = pixel_cutout_dimensions[0]
+            hdu = fits.getdata(self.input_stream, header=True,
+                            ext=cutout_dimension.extension, memmap=True, do_not_scale_image_data=True)
+            self._pixel_cutout(hdu, cutout_dimension)
+        else:
+            self._iterate_cutout(pixel_cutout_dimensions)
 
     def cutout(self, cutout_dimensions_str):
-        # Shortcut to this one extension
         if self.input_range_parser.is_pixel_cutout(cutout_dimensions_str):
             cutout_dimensions = self.input_range_parser.parse(
                 cutout_dimensions_str)
             self._iterate_pixel_cutout(cutout_dimensions)
         else:
-            self._iterate_wcs_cutout()
+            self._iterate_cutout(None)
