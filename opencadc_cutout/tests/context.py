@@ -15,3 +15,6 @@ import opencadc_cutout
 TEST_FILE_DIR='/tmp'
 def random_test_file_name_path(file_extension='fits', dir_name=TEST_FILE_DIR):
     return tempfile.NamedTemporaryFile(dir=dir_name, prefix=__name__, suffix='.{}'.format(file_extension)).name
+
+def generate_fits_cube_file(dimensions=2, dir_name=TEST_FILE_DIR):
+    pass

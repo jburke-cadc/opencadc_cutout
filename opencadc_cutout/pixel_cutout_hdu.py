@@ -71,15 +71,21 @@ import logging
 import numpy as np
 
 from math import ceil
-from .range_parser import RangeParser
 
+
+def fix_tuple(t):
+    if np.isscalar(t):
+        return (t, t)
+    elif len(t) < 2:
+        raise ValueError('Unusable dimension range {}'.format(t))
+    else:
+        return t
 
 class PixelCutoutHDU(object):
-    def __init__(self, dimension_ranges, extension=0, range_parser=RangeParser()):
+    def __init__(self, dimension_ranges=[], extension='0'):
         """
         A Pixel cutout.
-        :param dimension_ranges: list    Dimension ranges expressed as 'x:y' strings, or 'x' for single string value.
-        :param range_parser: RangeParser    RangeParser instance to use.
+        :param dimension_ranges: list    Dimension ranges expressed as tuples (i.e. (lower,upper)).
         :param extension: tuple, int, string
             The Extension specification to use.  If tuple, use (str, int) to get the nth count of the EXTNAME=str
             extension.  If string, use the first extension with EXTNAME=string, or use int to get the extension[int].
@@ -87,17 +93,15 @@ class PixelCutoutHDU(object):
         """
         self.logger = logging.getLogger()
         self.logger.setLevel('DEBUG')
-        self.dimension_ranges = dimension_ranges
-        self.range_parser = range_parser
-        self.extension = extension
+        self.dimension_ranges = list(map(fix_tuple, dimension_ranges))
+        self.extension = str(extension) # Just in case...
 
     def get_ranges(self):
         """
         Obtain the range tuples.
         """
         acc = []
-        for dr in self.dimension_ranges:
-            range_tuple = self.range_parser.parse(dr)
+        for range_tuple in self.dimension_ranges:
             acc.append((int(np.round(range_tuple[0])), int(np.round(range_tuple[1]))))
 
         return tuple(acc)
@@ -107,8 +111,7 @@ class PixelCutoutHDU(object):
         Convert the given dimensions to a shape.
         """
         acc = []
-        for dr in self.dimension_ranges:
-            range_tuple = self.range_parser.parse(dr)
+        for range_tuple in self.dimension_ranges:
             acc.append(int(np.round((range_tuple[1] - range_tuple[0]) + 1)))
 
         return tuple(acc)
@@ -118,8 +121,7 @@ class PixelCutoutHDU(object):
         Convert the given dimensions to a position to extract.
         """
         acc = []
-        for dr in self.dimension_ranges:
-            range_tuple = self.range_parser.parse(dr)
+        for range_tuple in self.dimension_ranges:
             acc.append(int(ceil(range_tuple[0] - 0.5) + int(ceil(((range_tuple[1] - range_tuple[0]) / 2) - 0.5))) - 1)
 
         return tuple(acc)

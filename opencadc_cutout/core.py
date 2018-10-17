@@ -70,6 +70,7 @@
 import logging
 
 from .file_helper import FileHelperFactory
+from .pixel_range_input_parser import PixelRangeInputParser
 
 
 class PixelCutout(object):
@@ -78,25 +79,28 @@ class PixelCutout(object):
     can be called by itself if need be.
     """
 
-    def __init__(self, helper_factory=FileHelperFactory()):
+    def __init__(self, helper_factory=FileHelperFactory(), input_range_parser=PixelRangeInputParser()):
         logging.getLogger().setLevel('INFO')
         self.logger = logging.getLogger(__name__)
         self.helper_factory = helper_factory
+        self.input_range_parser = input_range_parser
 
-    def cutout(self, file_path, output_writer, cutout_dimensions):
+    def cutout(self, input_reader, output_writer, cutout_dimensions_str, file_type):
         """
         Perform a Cutout of the given data at the given position and size.
-        :param file_path: string
+        :param input_reader: File-like object, Reader stream
             The file location.  The file extension is important as it's used to determine how to process it.
-        :param output_writer: File object, Writer
+        :param output_writer: File-like object, Writer stream
                 The writer to push the cutout array to.
-        :param cutout_dimensions: list of PixelCutoutHDU
+        :param cutout_dimensions_str: string of WCS coordinates, or extension and pixel coordinates.
             The requested dimensions expressed as PixelCutoutHDU objects.
+
+        Examples
+        ------------------------------
+
         """
-        file_helper = self._get_file_helper(file_path)
+        file_helper = self._get_file_helper(file_type, input_reader, output_writer)
+        file_helper.cutout(cutout_dimensions_str)
 
-        for cutout_dimension in cutout_dimensions:
-            file_helper.cutout(cutout_dimension, output_writer)
-
-    def _get_file_helper(self, file_path):
-        return self.helper_factory.get_instance(file_path)
+    def _get_file_helper(self, file_type, input_reader, output_writer):
+        return self.helper_factory.get_instance(file_type, input_reader, output_writer, self.input_range_parser)

@@ -84,7 +84,6 @@ class FileTypeHelpers(Enum):
 
 
 class FileHelperFactory(object):
-    def get_instance(self, file_path):
-        _, extension = os.path.splitext(file_path)
-        helper_class = FileTypeHelpers[extension.split('.')[1].upper()].value
-        return helper_class(file_path)
+    def get_instance(self, file_type, input_stream, output_writer, input_range_parser):
+        helper_class = FileTypeHelpers[file_type.upper()].value
+        return helper_class(input_stream, output_writer, input_range_parser)

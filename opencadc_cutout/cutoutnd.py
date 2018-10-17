@@ -75,8 +75,8 @@ import numpy as np
 
 from copy import deepcopy
 
-from astropy.nddata.utils import extract_array, Cutout2D
-from .range_parser import RangeParser
+from astropy.wcs import Sip
+from astropy.nddata.utils import extract_array
 
 
 class CutoutResult(object):
@@ -84,9 +84,10 @@ class CutoutResult(object):
     Just a DTO to move results of a cutout.  It's more readable than a plain tuple.
     """
 
-    def __init__(self, data, wcs=None):
+    def __init__(self, data, wcs=None, wcs_crpix=None):
         self.data = data
         self.wcs = wcs
+        self.wcs_crpix = wcs_crpix
 
 
 class CutoutND(object):
@@ -105,12 +106,11 @@ class CutoutND(object):
       CutoutResult instance
     """
 
-    def __init__(self, data, range_parser=RangeParser(), wcs=None):
+    def __init__(self, data, wcs=None):
         self.logger = logging.getLogger()
         self.logger.setLevel('DEBUG')
         self.data = data
         self.wcs = wcs
-        self.range_parser = range_parser
 
     def _get_position_shape(self, data_shape, cutout_region):
         requested_shape = cutout_region.get_shape()
@@ -142,21 +142,30 @@ class CutoutND(object):
         data = np.asanyarray(self.data)
         data_shape = data.shape
         position, shape = self._get_position_shape(data_shape, cutout_region)
+        self.logger.debug('Position {} and Shape {}'.format(position, shape))
         cutout_data = extract_array(data, shape, position, mode='partial')
 
         if self.wcs is not None:
+            cutout_shape = cutout_data.shape
             output_wcs = deepcopy(self.wcs)
             wcs_crpix = output_wcs.wcs.crpix
+            ranges = cutout_region.get_ranges()
+            l_ranges = len(ranges)
 
-            for idx, r in enumerate(cutout_region.get_ranges()):
-                wcs_crpix[idx] -= (r[0] - 1)
+            while len(wcs_crpix) < l_ranges:
+                wcs_crpix = np.append(wcs_crpix, 1.0)
 
-            cutout_shape = cutout_data.shape
-            self.logger.debug('Cutout shape is {}'.format(cutout_shape))
-            self.logger.debug('Requested shape is {}'.format(shape))
+            for idx, _ in enumerate(ranges):
+                wcs_crpix[idx] -= (ranges[idx][0] - 1)
 
             output_wcs._naxis = list(cutout_shape)
+
+            if self.wcs.sip is not None:
+                curr_sip = self.wcs.sip
+                output_wcs.sip = Sip(curr_sip.a, curr_sip.b,
+                                     curr_sip.ap, curr_sip.bp,
+                                     wcs_crpix[0:2])
         else:
             output_wcs = None
 
-        return CutoutResult(data=cutout_data, wcs=output_wcs)
+        return CutoutResult(data=cutout_data, wcs=output_wcs, wcs_crpix=wcs_crpix)

@@ -73,18 +73,25 @@ from __future__ import (absolute_import, division, print_function,
 import logging
 import numpy as np
 
-from astropy.nddata.utils import Cutout2D, NoOverlapError
 from ..cutoutnd import CutoutND
+from ...pixel_range_input_parser import PixelRangeInputParser
 
 
 class BaseFileHelper(object):
-    def __init__(self, file_path):
+    def __init__(self, input_stream, output_writer, input_range_parser=PixelRangeInputParser()):
         self.logger = logging.getLogger()
         self.logger.setLevel('INFO')
-        if file_path is None or file_path == '':
-            raise ValueError('File path is required.')
+        if input_stream is None:
+            raise ValueError('An input stream (file-like object or io/stream) is required to read from.')
         else:
-            self.file_path = file_path
+            self.input_stream = input_stream
+
+        if output_writer is None:
+            raise ValueError('An output stream (file-like object or io/stream) is required to write to.')
+        else:
+            self.output_writer = output_writer
+
+        self.input_range_parser = input_range_parser
 
     def do_cutout(self, data, cutout_dimension, wcs):
         """

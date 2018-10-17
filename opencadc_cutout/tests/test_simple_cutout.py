@@ -89,22 +89,21 @@ from opencadc_cutout.no_content_error import NoContentError
 pytest.main(args=['-s', os.path.abspath(__file__)])
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 TESTDATA_DIR = os.path.join(THIS_DIR, 'data')
-target_file_name = os.path.join(TESTDATA_DIR, 'test-cgps.fits')
-expected_cutout_file_name = os.path.join(
-    TESTDATA_DIR, 'test-cgps-0__300_800_810_1000____.fits')
+target_file_name = os.path.join(TESTDATA_DIR, 'test-simple.fits')
+expected_cutout_file_name = os.path.join(TESTDATA_DIR, 'test-simple-cutout.fits')
 logger = logging.getLogger()
-
 
 def test_simple_cutout():
     test_subject = PixelCutout()
     cutout_file_name_path = random_test_file_name_path()
     logger.info('Testing with {}'.format(cutout_file_name_path))
-    cutout_regions = [PixelCutoutHDU(['300:800', '810:1000'])]
+    cutout_region_str = '[300:800,810:1000]'
 
     # Write out a test file with the test result FITS data.
-    with open(cutout_file_name_path, 'ab+') as test_file_handle:
-        test_subject.cutout(target_file_name, test_file_handle, cutout_regions)
-        test_file_handle.close()
+    with open(cutout_file_name_path, 'ab+') as output_writer, open(target_file_name, 'r') as input_reader:
+        test_subject.cutout(input_reader, output_writer, cutout_region_str, 'FITS')
+        output_writer.close()
+        input_reader.close()
 
     with fits.open(expected_cutout_file_name, mode='readonly') as expected_hdu_list, fits.open(cutout_file_name_path, mode='readonly') as result_hdu_list:
         fits_diff = fits.FITSDiff(expected_hdu_list, result_hdu_list)
