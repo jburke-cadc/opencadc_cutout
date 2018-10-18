@@ -128,22 +128,35 @@ class CutoutND(object):
             raise ValueError('Invalid shape requested (tried to extract {} from {}).'.format(
                 r_shape, data_shape))
 
-        shape = (data_shape[:(len_data - len_shape)]) + r_shape
+        if r_shape:
+            shape = tuple((data_shape[:(len_data - len_shape)]) + r_shape)
+        else:
+            shape = None
 
         if len_pos > len_data:
             raise ValueError('Invalid position requested (tried to extract {} from {}).'.format(
                 r_position, data_shape))
 
-        position = (data_shape[:(len_data - len_pos)]) + r_position
+        if r_position:
+            position = tuple((data_shape[:(len_data - len_pos)]) + r_position)
+        else:
+            position = None
 
-        return (tuple(position), tuple(shape))
+        return (position, shape)
 
     def extract(self, cutout_region):
         data = np.asanyarray(self.data)
         data_shape = data.shape
         position, shape = self._get_position_shape(data_shape, cutout_region)
         self.logger.debug('Position {} and Shape {}'.format(position, shape))
-        cutout_data = extract_array(data, shape, position, mode='partial')
+
+        # No pixels specified, so return the entire HDU
+        if (not position and not shape) or shape == data_shape:
+            self.logger.debug('Returning entire HDU data for {}'.format(cutout_region.get_extension()))
+            cutout_data = data
+        else:
+            self.logger.debug('Cutting out {} at {} for {}.'.format(shape, position, cutout_region.get_extension()))
+            cutout_data = extract_array(data, shape, position, mode='partial')
 
         if self.wcs is not None:
             cutout_shape = cutout_data.shape

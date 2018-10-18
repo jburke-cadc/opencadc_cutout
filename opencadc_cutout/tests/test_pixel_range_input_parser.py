@@ -90,15 +90,15 @@ def test_parse():
     assert str(err) == 'Not a valid pixel cutout string "BOGUS=78 9".'
 
   result = test_subject.parse('[9][500:600]')
-  assert result[0].extension == '9', 'Wrong extension.'
+  assert result[0].get_extension() == 9, 'Wrong extension.'
 
   result = test_subject.parse('[3]')
-  assert result[0].extension == '3', 'Wrong extension.'
+  assert result[0].get_extension() == 3, 'Wrong extension.'
 
   result = test_subject.parse('[35:78]')
-  assert result[0].extension == '0', 'Wrong extension.'
+  assert result[0].get_extension() == 0, 'Wrong extension.'
   assert result[0].dimension_ranges == [(35, 78)], 'Wrong ranges.'
 
   result = test_subject.parse('[0][500:600,700:1200,6:10]')
-  assert result[0].extension == '0', 'Wrong extension.'
+  assert result[0].get_extension() == 0, 'Wrong extension.'
   assert result[0].dimension_ranges == [(500,600),(700,1200),(6,10)], 'Wrong ranges.'

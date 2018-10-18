@@ -71,6 +71,7 @@ import logging
 import numpy as np
 
 from math import ceil
+from .utils import is_integer
 
 
 def fix_tuple(t):
@@ -94,7 +95,7 @@ class PixelCutoutHDU(object):
         self.logger = logging.getLogger()
         self.logger.setLevel('DEBUG')
         self.dimension_ranges = list(map(fix_tuple, dimension_ranges))
-        self.extension = str(extension) # Just in case...
+        self._extension = str(extension) # For consistency.
 
     def get_ranges(self):
         """
@@ -125,3 +126,13 @@ class PixelCutoutHDU(object):
             acc.append(int(ceil(range_tuple[0] - 0.5) + int(ceil(((range_tuple[1] - range_tuple[0]) / 2) - 0.5))) - 1)
 
         return tuple(acc)
+
+    def get_extension(self):
+        ext = self._extension
+        if is_integer(ext):
+            return int(ext)
+        elif ext.count(',') == 1:
+            es = ext.split(',')
+            return (es[0], int(es[1]))
+        else:
+            return ext

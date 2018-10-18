@@ -74,7 +74,7 @@ import logging
 import numpy as np
 
 from ..cutoutnd import CutoutND
-from ...pixel_range_input_parser import PixelRangeInputParser
+from ..pixel_range_input_parser import PixelRangeInputParser
 
 
 class BaseFileHelper(object):

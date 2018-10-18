@@ -149,10 +149,10 @@ class PixelRangeInputParser(object):
                 'Invalid range specified.  Should be in the format of {} (i.e. [0][8:35]), or single digit (i.e. 9).'.format(self.match_pattern))
 
         parsed_items = []
-        pixel_ranges = []
-        extension = '0'
 
         for r in ranges:
+            pixel_ranges = []
+            extension = '0'
             split_items = list(map(lambda x: x.split(
                 '[')[1], list(filter(None, r.split(']')))))
             l_items = len(split_items)

@@ -81,13 +81,13 @@ from opencadc_cutout.pixel_cutout_hdu import PixelCutoutHDU
 
 def test_create():
     test_subject = PixelCutoutHDU([(1,200), (305,600)], 7)
-    assert test_subject.extension == '7', 'Wrong extension.'
+    assert test_subject.get_extension() == 7, 'Wrong extension.'
 
     test_subject = PixelCutoutHDU([(1,200), (30)], 'SCI,5')
-    assert test_subject.extension == 'SCI,5', 'Wrong extension.'
+    assert test_subject.get_extension() == ('SCI',5), 'Wrong extension.'
 
     test_subject = PixelCutoutHDU(extension='5')
-    assert test_subject.extension == '5', 'Wrong extension.'
+    assert test_subject.get_extension() == 5, 'Wrong extension.'
 
 def test_get_shape():
     test_subject = PixelCutoutHDU([(1,200), (305,600)])
