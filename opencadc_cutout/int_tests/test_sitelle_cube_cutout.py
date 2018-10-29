@@ -81,7 +81,7 @@ from astropy.io import fits
 from astropy.wcs import WCS
 
 from .context import opencadc_cutout, random_test_file_name_path
-from opencadc_cutout.core import PixelCutout
+from opencadc_cutout.core import OpenCADCCutout
 from opencadc_cutout.pixel_cutout_hdu import PixelCutoutHDU
 from opencadc_cutout.no_content_error import NoContentError
 
@@ -93,9 +93,9 @@ target_file_name = '/usr/src/data/test-sitelle-cube.fits'
 expected_cutout_file_name = '/usr/src/data/test-sitelle-cube-cutout_fcat.fits'
 logger = logging.getLogger()
 
-
+@pytest.mark.skip
 def test_sitelle_cube_cutout():
-    test_subject = PixelCutout()
+    test_subject = OpenCADCCutout()
     cutout_file_name_path = random_test_file_name_path()
     logger.info('Testing with {}'.format(cutout_file_name_path))
     cutout_regions = [PixelCutoutHDU(['1000:1700', '500:1100', '165:200'])]

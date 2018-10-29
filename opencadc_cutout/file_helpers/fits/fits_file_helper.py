@@ -71,7 +71,6 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import logging
-import re
 import time
 import astropy
 
@@ -207,9 +206,8 @@ class FITSHelper(BaseFileHelper):
         ext_name_dict = {}
 
         # Start with the first extension
-        # self.logger.debug(
-            # 'Checking data from extension {}'.format(curr_extension_idx))
-        hdu_list = fits.open(name=self.input_stream, memmap=True, do_not_scale_image_data=True)
+        hdu_list = fits.open(name=self.input_stream,
+                             memmap=True, mode='readonly', do_not_scale_image_data=True)
         # hdu = fits.getdata(self.input_stream, header=True,
         #    ext=curr_extension_idx, memmap=True, do_not_scale_image_data=True)
 
@@ -239,7 +237,8 @@ class FITSHelper(BaseFileHelper):
                     if self._is_extension_requested(curr_extension_idx, curr_extension_name_idx, cutout_dimension) == True:
                         self.logger.debug('Extension ({} | {}) is requested ({}).'.format(
                             curr_extension_idx, curr_extension_name_idx, cutout_dimension.get_extension()))
-                        self._pixel_cutout(hdu.header, hdu.data, cutout_dimension)
+                        self._pixel_cutout(
+                            hdu.header, hdu.data, cutout_dimension)
 
             curr_extension_idx += 1
             # self.logger.debug(
@@ -254,9 +253,14 @@ class FITSHelper(BaseFileHelper):
     def _iterate_pixel_cutout(self, pixel_cutout_dimensions):
         if pixel_cutout_dimensions is not None and len(pixel_cutout_dimensions) == 1:
             cutout_dimension = pixel_cutout_dimensions[0]
-            hdu = fits.getdata(self.input_stream, header=True,
-                               ext=cutout_dimension.get_extension(), memmap=True, do_not_scale_image_data=True)
-            self._pixel_cutout(hdu[1], hdu[0], cutout_dimension)
+            hdu_list = fits.open(self.input_stream, memmap=True, mode='readonly', do_not_scale_image_data=True)
+            ext_idx = hdu_list.index_of(cutout_dimension.get_extension())
+            if ext_idx >= 0:
+                hdu = hdu_list.pop(ext_idx)
+                self._pixel_cutout(hdu.header, hdu.data, cutout_dimension)
+            # hdu = fits.getdata(self.input_stream, header=True,
+            #                    ext=cutout_dimension.get_extension(), memmap=True,
+            #                    do_not_scale_image_data=True)
         else:
             self._iterate_cutout(pixel_cutout_dimensions)
 

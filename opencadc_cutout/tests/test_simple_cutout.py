@@ -81,7 +81,7 @@ from astropy.io import fits
 from astropy.wcs import WCS
 
 from .context import opencadc_cutout, random_test_file_name_path
-from opencadc_cutout.core import PixelCutout
+from opencadc_cutout.core import OpenCADCCutout
 from opencadc_cutout.pixel_cutout_hdu import PixelCutoutHDU
 from opencadc_cutout.no_content_error import NoContentError
 
@@ -94,7 +94,7 @@ expected_cutout_file_name = os.path.join(TESTDATA_DIR, 'test-simple-cutout.fits'
 logger = logging.getLogger()
 
 def test_simple_cutout():
-    test_subject = PixelCutout()
+    test_subject = OpenCADCCutout()
     cutout_file_name_path = random_test_file_name_path()
     logger.info('Testing with {}'.format(cutout_file_name_path))
     cutout_region_str = '[300:800,810:1000]'

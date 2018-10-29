@@ -68,12 +68,15 @@
 #
 
 import logging
+import signal
+import sys
+import os
 
 from .file_helper import FileHelperFactory
 from .pixel_range_input_parser import PixelRangeInputParser
 
 
-class PixelCutout(object):
+class OpenCADCCutout(object):
     """
     Base cutout class.  This is mainly used as a parent class for concrete instances, like from a FITS file, but
     can be called by itself if need be.
@@ -99,7 +102,8 @@ class PixelCutout(object):
         ------------------------------
 
         """
-        file_helper = self._get_file_helper(file_type, input_reader, output_writer)
+        file_helper = self._get_file_helper(
+            file_type, input_reader, output_writer)
         file_helper.cutout(cutout_dimensions_str)
 
     def _get_file_helper(self, file_type, input_reader, output_writer):
