@@ -84,6 +84,7 @@ from .context import opencadc_cutout, random_test_file_name_path
 from opencadc_cutout.core import OpenCADCCutout
 from opencadc_cutout.pixel_cutout_hdu import PixelCutoutHDU
 from opencadc_cutout.no_content_error import NoContentError
+from opencadc_cutout.file_helper import FileTypeHelpers
 
 
 pytest.main(args=['-s', os.path.abspath(__file__)])
