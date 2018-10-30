@@ -1,4 +1,6 @@
 .eggs
 .pytest*
+*.egg-info/
+*.pyc
 *.fits
 github_issue.py
