@@ -76,7 +76,7 @@ import astropy
 
 from copy import copy
 from astropy.io import fits
-from astropy.io.fits import PrimaryHDU
+from astropy.io.fits import PrimaryHDU, ImageHDU
 from astropy.wcs import WCS
 from astropy.nddata import NoOverlapError
 from ...utils import is_integer
@@ -130,7 +130,7 @@ class FITSHelper(BaseFileHelper):
             cutout_wcs_header = cutout_wcs.to_header(relax=True)
             header.update(cutout_wcs_header)
 
-            if cutout_wcs.sip is not None:
+            if cutout_wcs.sip is not None:  
                 cutout_crpix = cutout_result.wcs_crpix
 
                 for idx, val in enumerate(cutout_crpix):
@@ -171,14 +171,17 @@ class FITSHelper(BaseFileHelper):
         return WCS(header=header, naxis=naxis)
 
     def _write_cutout(self, header, data, cutout_dimension, wcs):
-        cutout_result = self.do_cutout(
-            data=data, cutout_dimension=cutout_dimension, wcs=wcs)
+        try:
+            cutout_result = self.do_cutout(
+                data=data, cutout_dimension=cutout_dimension, wcs=wcs)
 
-        self._post_sanitize_header(header, cutout_result)
+            self._post_sanitize_header(header, cutout_result)
 
-        fits.append(filename=self.output_writer, header=header, data=cutout_result.data,
-                    overwrite=False, output_verify='silentfix', checksum='remove')
-        self.output_writer.flush()
+            fits.append(filename=self.output_writer, header=header, data=cutout_result.data,
+                        overwrite=False, output_verify='silentfix', checksum='remove')
+            self.output_writer.flush()
+        except NoContentError:
+            self.logger.warn('No cutout possible on extension {}.  Skipping...'.format(cutout_dimension.get_extension()))
 
     def _pixel_cutout(self, header, data, cutout_dimension):
         extension = cutout_dimension.get_extension()
@@ -193,18 +196,14 @@ class FITSHelper(BaseFileHelper):
                 'No overlap found for extension {}'.format(extension))
             raise NoContentError('No content (arrays do not overlap).')
 
-    def _is_extension_requested(self, extension_idx, extension_name_idx, cutout_dimension):
+    def _is_extension_requested(self, extension_idx, ext_name_ver, cutout_dimension):
         requested_extension = cutout_dimension.get_extension()
-
-        # Zero and 1 are the same.
-        if requested_extension == 0:
-            requested_extension = 1
 
         matches = False
 
-        if extension_name_idx is not None:
-            matches = (extension_name_idx ==
-                       requested_extension or requested_extension == extension_name_idx[0])
+        if ext_name_ver is not None:
+            matches = (ext_name_ver ==
+                       requested_extension or requested_extension == ext_name_ver[0])
 
         if matches == False and is_integer(requested_extension) and is_integer(extension_idx):
             matches = (int(requested_extension) == int(extension_idx))
@@ -215,34 +214,23 @@ class FITSHelper(BaseFileHelper):
         return matches
 
     def _iterate_cutout(self, pixel_cutout_dimensions):
-        # Tally the extension names to ensure a match for the case of extension name and index (i.e. [SCI,3]).
-        ext_name_dict = {}
-
         # Start with the first extension
         hdu_list = fits.open(name=self.input_stream,
                              memmap=True, mode='readonly', do_not_scale_image_data=True)
 
         for curr_extension_idx, hdu in enumerate(hdu_list):
-            self.logger.debug(
-                'Checking data from extension {}'.format(curr_extension_idx))
-
             if isinstance(hdu, PrimaryHDU) == True:
                 self.logger.debug('Primary at {}'.format(curr_extension_idx))
                 fits.append(filename=self.output_writer, header=hdu.header, data=None,
                             overwrite=False, output_verify='silentfix', checksum='remove')
-            else:
+            elif isinstance(hdu, ImageHDU):
                 header = hdu.header
                 ext_name = header.get('EXTNAME')
-                curr_extension_name_idx = None
+                ext_ver = header.get('EXTVER', 0)
+                curr_ext_name_ver = None
 
                 if ext_name is not None:
-                    if not ext_name in ext_name_dict:
-                        ext_name_dict[ext_name] = 1
-                    else:
-                        ext_name_dict[ext_name] += 1
-
-                    curr_extension_name_idx = ('{}'.format(
-                        ext_name), ext_name_dict[ext_name])
+                    curr_ext_name_ver = (ext_name, ext_ver)
 
                 if pixel_cutout_dimensions is None:
                     # TODO - Do WCS transformation and check for overlap.
@@ -250,12 +238,14 @@ class FITSHelper(BaseFileHelper):
                 else:
                     for cutout_dimension in pixel_cutout_dimensions:
                         is_ext_req = self._is_extension_requested(
-                            curr_extension_idx, curr_extension_name_idx, cutout_dimension)
+                            curr_extension_idx, curr_ext_name_ver, cutout_dimension)
                         if is_ext_req == True:
                             self.logger.debug('*** Extension {} does match ({} | {})'.format(
-                                cutout_dimension.get_extension(), curr_extension_idx, curr_extension_name_idx))
+                                cutout_dimension.get_extension(), curr_extension_idx, curr_ext_name_ver))
                             self._pixel_cutout(
                                 header, hdu.data, cutout_dimension)
+            else:
+                self.logger.warn('Unsupported HDU at extension {}.'.format(curr_extension_idx))
 
     def _iterate_pixel_cutout(self, pixel_cutout_dimensions):
         if pixel_cutout_dimensions is not None and len(pixel_cutout_dimensions) == 1:

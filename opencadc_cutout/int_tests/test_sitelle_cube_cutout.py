@@ -93,13 +93,12 @@ expected_cutout_file_name = '/usr/src/data/test-sitelle-cube-cutout.fits'
 logger = logging.getLogger()
 
 
-@pytest.mark.skip
+
 def test_sitelle_cube_cutout():
     test_subject = OpenCADCCutout()
     result_cutout_file_path = random_test_file_name_path()
     logger.info('Testing with {}'.format(result_cutout_file_path))
     cutout_region_string = '[1000:1700,500:1100,165:200]'
-    # cutout_region_string = '[1000:1700,500:1100]'
 
     # Write out a test file with the test result FITS data.
     with open(result_cutout_file_path, 'ab+') as test_file_handle, open(target_file_name, 'rb') as input_file_handle:

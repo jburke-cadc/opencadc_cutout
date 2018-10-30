@@ -82,6 +82,7 @@ def fix_tuple(t):
     else:
         return t
 
+
 class PixelCutoutHDU(object):
     def __init__(self, dimension_ranges=[], extension='0'):
         """
@@ -95,7 +96,7 @@ class PixelCutoutHDU(object):
         self.logger = logging.getLogger()
         self.logger.setLevel('DEBUG')
         self.dimension_ranges = list(map(fix_tuple, dimension_ranges))
-        self._extension = str(extension) # For consistency.
+        self._extension = str(extension)  # For consistency.
 
     def get_ranges(self):
         """
@@ -103,7 +104,8 @@ class PixelCutoutHDU(object):
         """
         acc = []
         for range_tuple in self.dimension_ranges:
-            acc.append((int(np.round(range_tuple[0])), int(np.round(range_tuple[1]))))
+            acc.append(
+                (int(np.round(range_tuple[0])), int(np.round(range_tuple[1]))))
 
         return tuple(acc)
 
@@ -123,7 +125,8 @@ class PixelCutoutHDU(object):
         """
         acc = []
         for range_tuple in self.dimension_ranges:
-            acc.append(int(ceil(range_tuple[0] - 0.5) + int(ceil(((range_tuple[1] - range_tuple[0]) / 2) - 0.5))) - 1)
+            acc.append(int(ceil(
+                range_tuple[0] - 0.5) + int(ceil(((range_tuple[1] - range_tuple[0]) / 2) - 0.5))) - 1)
 
         return tuple(acc)
 
@@ -133,6 +136,12 @@ class PixelCutoutHDU(object):
             return int(ext)
         elif ext.count(',') == 1:
             es = ext.split(',')
-            return (es[0], int(es[1]))
+            ext_int = int(es[1])
+
+            # EXTNAME and EXTVER are 1-based.
+            if ext_int == 0:
+                ext_int = 1
+
+            return (es[0], ext_int)
         else:
             return ext

@@ -77,6 +77,7 @@ from copy import deepcopy
 
 from astropy.wcs import Sip
 from astropy.nddata.utils import extract_array
+from .no_content_error import NoContentError
 
 
 class CutoutResult(object):
@@ -125,7 +126,7 @@ class CutoutND(object):
         len_shape = len(r_shape)
 
         if len_shape > len_data:
-            raise ValueError('Invalid shape requested (tried to extract {} from {}).'.format(
+            raise NoContentError('Invalid shape requested (tried to extract {} from {}).'.format(
                 r_shape, data_shape))
 
         if r_shape:
@@ -134,17 +135,13 @@ class CutoutND(object):
             shape = None
 
         if len_pos > len_data:
-            raise ValueError('Invalid position requested (tried to extract {} from {}).'.format(
+            raise NoContentError('Invalid position requested (tried to extract {} from {}).'.format(
                 r_position, data_shape))
-
-        self.logger.debug('\n\nData Position: {}\n\nCutout Position: {}\n'.format(data_shape, r_position))
 
         if r_position:
             position = tuple((data_shape[:(len_data - len_pos)]) + r_position)
         else:
             position = None
-
-        self.logger.debug('\n\nFinal Position: {}\n'.format(position))
 
         return (position, shape)
 
@@ -156,11 +153,13 @@ class CutoutND(object):
 
         # No pixels specified, so return the entire HDU
         if (not position and not shape) or shape == data_shape:
-            self.logger.debug('Returning entire HDU data for {}'.format(cutout_region.get_extension()))
+            self.logger.debug('Returning entire HDU data for {}'.format(
+                cutout_region.get_extension()))
             cutout_data = data
         else:
-            self.logger.debug('Cutting out {} at {} for {} from {}.'.format(shape, position, cutout_region.get_extension(), data.shape))
-            cutout_data = extract_array(data, shape, position, mode='partial')
+            self.logger.debug('Cutting out {} at {} for extension {} from {}.'.format(
+                shape, position, cutout_region.get_extension(), data.shape))
+            cutout_data, position = extract_array(data, shape, position, mode='partial', return_position=True)
 
         if self.wcs is not None:
             cutout_shape = cutout_data.shape

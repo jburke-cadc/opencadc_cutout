@@ -96,7 +96,7 @@ expected_cutout_file_path = '/usr/src/data/test-vlass-cube-cutout.fits'
 cutout_region_string = '[500:900,300:1000,8:12]'
 logger = logging.getLogger()
 
-@pytest.mark.skip
+
 def test_vlass_cube_cutout():
     test_subject = OpenCADCCutout()
     result_cutout_file_path = random_test_file_name_path()
