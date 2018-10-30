@@ -5,9 +5,12 @@ Cutout library written in Python that uses Astropy APIs.
 
 Cutouts are performed unidirectionally, meaning the library assumes an input stream that can only be read once, rather than seeking.  If more than one HDU was requested, then each HDU is iterated over and compared from top to bottom.  Single HDU requests are shortcircuited using the Astropy `astropy.io.fits.getdata()` function
 
+Python 3.x has a potential issue when appending to an output stream where Astropy incorrectly sets a mode to prevent appending (See [Astropy GitHub 7856](https://github.com/astropy/astropy/pull/7856)).
+
 ### Example 1
 Perform a cutout of a file using the `cfitsio` cutout string format.
 ```python
+    import tempfile
     from opencadc_cutout import OpenCADCCutout
 
     cutout = OpenCADCCutout()
@@ -27,6 +30,7 @@ Perform a cutout of a file using the `cfitsio` cutout string format.
 ### Example 2 (CADC)
 Perform a cutout from an input stream from an HTTP request.
 ```python
+    import tempfile
     from opencadc_cutout import OpenCADCCutout
     from cadcdata import CadcDataClient
 
