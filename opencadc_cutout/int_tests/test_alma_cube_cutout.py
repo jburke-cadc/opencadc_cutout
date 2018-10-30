@@ -88,7 +88,7 @@ from opencadc_cutout.no_content_error import NoContentError
 
 
 pytest.main(args=['-s', os.path.abspath(__file__)])
-archive = 'VLASS'
+archive = 'ALMA'
 target_file_name = '/usr/src/data/test-alma-cube.fits'
 expected_cutout_file_path = '/usr/src/data/test-alma-cube-cutout.fits'
 # target_file_name = 'source_calibrated_line_image_162608-24202.image.fits'
@@ -97,9 +97,9 @@ expected_cutout_file_path = '/usr/src/data/test-alma-cube-cutout.fits'
 cutout_region_string = '[80:220,100:150,100:150]'
 logger = logging.getLogger()
 
-def test_vlass_cube_cutout():
+def test_alma_cube_cutout():
     test_subject = OpenCADCCutout()
-    result_cutout_file_path = random_test_file_name_path(dir_name='/usr/src/app')
+    result_cutout_file_path = random_test_file_name_path()
 
     logger.info('Testing output to {}'.format(result_cutout_file_path))
 

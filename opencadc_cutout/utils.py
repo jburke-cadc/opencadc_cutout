@@ -5,6 +5,9 @@ def to_num(s):
         return float(s)
 
 def is_integer(s):
+    if isinstance(s, tuple):
+        return False
+
     try:
         int(s)
         return True

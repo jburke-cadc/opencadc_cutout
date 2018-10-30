@@ -76,6 +76,7 @@ import astropy
 
 from copy import copy
 from astropy.io import fits
+from astropy.io.fits import PrimaryHDU
 from astropy.wcs import WCS
 from astropy.nddata import NoOverlapError
 from ...utils import is_integer
@@ -158,10 +159,10 @@ class FITSHelper(BaseFileHelper):
 
         if naxis_value is not None and int(naxis_value) > 0:
             for nax in range(1, naxis_value + 1):
-
                 ctype = header.get('CTYPE{0}{1}'.format(nax, ' '))
                 if ctype is not None and ctype.endswith('-SIP'):
                     naxis = 2
+                    break
                 else:
                     naxis = None
         else:
@@ -194,73 +195,77 @@ class FITSHelper(BaseFileHelper):
 
     def _is_extension_requested(self, extension_idx, extension_name_idx, cutout_dimension):
         requested_extension = cutout_dimension.get_extension()
+
+        # Zero and 1 are the same.
+        if requested_extension == 0:
+            requested_extension = 1
+
+        matches = False
+
         if extension_name_idx is not None:
-            return (extension_name_idx == requested_extension or requested_extension == extension_name_idx[0])
-        else:
-            return requested_extension == extension_idx
+            matches = (extension_name_idx ==
+                       requested_extension or requested_extension == extension_name_idx[0])
+
+        if matches == False and is_integer(requested_extension) and is_integer(extension_idx):
+            matches = (int(requested_extension) == int(extension_idx))
+
+        if matches == False:
+            matches = (requested_extension == extension_idx)
+
+        return matches
 
     def _iterate_cutout(self, pixel_cutout_dimensions):
-        # curr_extension_idx = 0
-
         # Tally the extension names to ensure a match for the case of extension name and index (i.e. [SCI,3]).
         ext_name_dict = {}
 
         # Start with the first extension
         hdu_list = fits.open(name=self.input_stream,
                              memmap=True, mode='readonly', do_not_scale_image_data=True)
-        # hdu = fits.getdata(self.input_stream, header=True,
-        #    ext=curr_extension_idx, memmap=True, do_not_scale_image_data=True)
 
-        # while hdu is not None:
         for curr_extension_idx, hdu in enumerate(hdu_list):
             self.logger.debug(
                 'Checking data from extension {}'.format(curr_extension_idx))
-            # header = hdu[1]
-            header = hdu.header
-            ext_name = header.get('EXTNAME')
-            curr_extension_name_idx = None
 
-            if ext_name is not None:
-                if not ext_name in ext_name_dict:
-                    ext_name_dict[ext_name] = 1
-                else:
-                    ext_name_dict[ext_name] += 1
-
-                curr_extension_name_idx = ('{}'.format(
-                    ext_name), ext_name_dict[ext_name])
-
-            if pixel_cutout_dimensions is None:
-                # TODO - Do WCS transformation and check for overlap.
-                pass
+            if isinstance(hdu, PrimaryHDU) == True:
+                self.logger.debug('Primary at {}'.format(curr_extension_idx))
+                fits.append(filename=self.output_writer, header=hdu.header, data=None,
+                            overwrite=False, output_verify='silentfix', checksum='remove')
             else:
-                for cutout_dimension in pixel_cutout_dimensions:
-                    if self._is_extension_requested(curr_extension_idx, curr_extension_name_idx, cutout_dimension) == True:
-                        self.logger.debug('Extension ({} | {}) is requested ({}).'.format(
-                            curr_extension_idx, curr_extension_name_idx, cutout_dimension.get_extension()))
-                        self._pixel_cutout(
-                            hdu.header, hdu.data, cutout_dimension)
+                header = hdu.header
+                ext_name = header.get('EXTNAME')
+                curr_extension_name_idx = None
 
-            curr_extension_idx += 1
-            # self.logger.debug(
-            #     'Checking data from extension {}'.format(curr_extension_idx))
+                if ext_name is not None:
+                    if not ext_name in ext_name_dict:
+                        ext_name_dict[ext_name] = 1
+                    else:
+                        ext_name_dict[ext_name] += 1
 
-            # try:
-            #     hdu = fits.getdata(self.input_stream, header=True,
-            #                        ext=curr_extension_idx, memmap=True, do_not_scale_image_data=True)
-            # except IndexError:
-            #     hdu = None
+                    curr_extension_name_idx = ('{}'.format(
+                        ext_name), ext_name_dict[ext_name])
+
+                if pixel_cutout_dimensions is None:
+                    # TODO - Do WCS transformation and check for overlap.
+                    pass
+                else:
+                    for cutout_dimension in pixel_cutout_dimensions:
+                        is_ext_req = self._is_extension_requested(
+                            curr_extension_idx, curr_extension_name_idx, cutout_dimension)
+                        if is_ext_req == True:
+                            self.logger.debug('*** Extension {} does match ({} | {})'.format(
+                                cutout_dimension.get_extension(), curr_extension_idx, curr_extension_name_idx))
+                            self._pixel_cutout(
+                                header, hdu.data, cutout_dimension)
 
     def _iterate_pixel_cutout(self, pixel_cutout_dimensions):
         if pixel_cutout_dimensions is not None and len(pixel_cutout_dimensions) == 1:
             cutout_dimension = pixel_cutout_dimensions[0]
-            hdu_list = fits.open(self.input_stream, memmap=True, mode='readonly', do_not_scale_image_data=True)
+            hdu_list = fits.open(self.input_stream, memmap=True,
+                                 mode='readonly', do_not_scale_image_data=True)
             ext_idx = hdu_list.index_of(cutout_dimension.get_extension())
             if ext_idx >= 0:
                 hdu = hdu_list.pop(ext_idx)
                 self._pixel_cutout(hdu.header, hdu.data, cutout_dimension)
-            # hdu = fits.getdata(self.input_stream, header=True,
-            #                    ext=cutout_dimension.get_extension(), memmap=True,
-            #                    do_not_scale_image_data=True)
         else:
             self._iterate_cutout(pixel_cutout_dimensions)
 

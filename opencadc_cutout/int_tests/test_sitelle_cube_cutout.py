@@ -87,28 +87,31 @@ from opencadc_cutout.no_content_error import NoContentError
 
 
 pytest.main(args=['-s', os.path.abspath(__file__)])
-THIS_DIR = os.path.dirname(os.path.realpath(__file__))
-TESTDATA_DIR = os.path.join(THIS_DIR, 'data')
+archive = 'CFHT'
 target_file_name = '/usr/src/data/test-sitelle-cube.fits'
-expected_cutout_file_name = '/usr/src/data/test-sitelle-cube-cutout_fcat.fits'
+expected_cutout_file_name = '/usr/src/data/test-sitelle-cube-cutout.fits'
 logger = logging.getLogger()
+
 
 @pytest.mark.skip
 def test_sitelle_cube_cutout():
     test_subject = OpenCADCCutout()
-    cutout_file_name_path = random_test_file_name_path()
-    logger.info('Testing with {}'.format(cutout_file_name_path))
-    cutout_regions = [PixelCutoutHDU(['1000:1700', '500:1100', '165:200'])]
+    result_cutout_file_path = random_test_file_name_path()
+    logger.info('Testing with {}'.format(result_cutout_file_path))
+    cutout_region_string = '[1000:1700,500:1100,165:200]'
+    # cutout_region_string = '[1000:1700,500:1100]'
 
     # Write out a test file with the test result FITS data.
-    with open(cutout_file_name_path, 'ab+') as test_file_handle:
-        test_subject.cutout(target_file_name, test_file_handle, cutout_regions)
+    with open(result_cutout_file_path, 'ab+') as test_file_handle, open(target_file_name, 'rb') as input_file_handle:
+        test_subject.cutout(input_file_handle,
+                            test_file_handle, cutout_region_string, 'FITS')
         test_file_handle.close()
+        input_file_handle.close()
 
-    with fits.open(expected_cutout_file_name, mode='readonly', memmap=True, do_not_scale_image_data=True) as expected_hdu_list, fits.open(cutout_file_name_path, mode='readonly', memmap=True, do_not_scale_image_data=True) as result_hdu_list:
-        fits_diff = fits.FITSDiff(expected_hdu_list, result_hdu_list)
-        np.testing.assert_array_equal(
-            (), fits_diff.diff_hdu_count, 'HDU count diff should be empty.')
+    with fits.open(expected_cutout_file_name, mode='readonly', do_not_scale_image_data=True) as expected_hdu_list, fits.open(result_cutout_file_path, mode='readonly', do_not_scale_image_data=True) as result_hdu_list:
+        # fits_diff = fits.FITSDiff(expected_hdu_list, result_hdu_list)
+        # np.testing.assert_array_equal(
+        #     (), fits_diff.diff_hdu_count, 'HDU count diff should be empty.')
 
         for extension, result_hdu in enumerate(result_hdu_list):
             expected_hdu = expected_hdu_list[extension]
@@ -127,5 +130,6 @@ def test_sitelle_cube_cutout():
                 'CHECKSUM') is None, 'Should not contain CHECKSUM.'
             assert expected_hdu.header.get(
                 'DATASUM') is None, 'Should not contain DATASUM.'
-            np.testing.assert_array_equal(
-                expected_hdu.data, result_hdu.data, 'Arrays do not match.')
+            logger.debug('\n\nX shape: {} \n\nY shape: {}.'.format(
+                expected_hdu.data.shape, result_hdu.data.shape))
+            np.testing.assert_array_equal(expected_hdu.data, result_hdu.data)

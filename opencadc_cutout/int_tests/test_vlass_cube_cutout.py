@@ -89,8 +89,10 @@ from opencadc_cutout.no_content_error import NoContentError
 
 pytest.main(args=['-s', os.path.abspath(__file__)])
 archive = 'VLASS'
-target_file_name = 'VLASS1.1.cc.T29t05.J110448+763000.10.2048.v1.fits'
-data_dir = '/usr/src/data'
+target_file_name = '/usr/src/data/test-vlass-cube.fits'
+expected_cutout_file_path = '/usr/src/data/test-vlass-cube-cutout.fits'
+# target_file_name = 'VLASS1.1.cc.T29t05.J110448+763000.10.2048.v1.fits'
+# data_dir = '/usr/src/data'
 cutout_region_string = '[500:900,300:1000,8:12]'
 logger = logging.getLogger()
 
@@ -98,20 +100,16 @@ logger = logging.getLogger()
 def test_vlass_cube_cutout():
     test_subject = OpenCADCCutout()
     result_cutout_file_path = random_test_file_name_path()
-    expected_cutout_file_path = random_test_file_name_path()
+    # expected_cutout_file_path = random_test_file_name_path()
 
     logger.info('Testing output to {}'.format(result_cutout_file_path))
 
-    # Write out a test result file with the test result FITS data.
-    with open(result_cutout_file_path, 'ab+') as expected_file_handle:
-        input_stream = get_file(archive, target_file_name)
-        test_subject.cutout(input_stream, expected_file_handle, cutout_region_string, 'FITS')
-        expected_file_handle.close()
-
-    # Write out a test result file with the test result FITS data.
-    with open(expected_cutout_file_path, 'wb+') as expected_file_handle:
-        get_file(archive, '{}/{}'.format(data_dir, target_file_name), cutout=cutout_region_string, destination=expected_file_handle)
-        expected_file_handle.close()
+    # Write out a test file with the test result FITS data.
+    with open(result_cutout_file_path, 'ab+') as test_file_handle, open(target_file_name, 'rb') as input_file_handle:
+        test_subject.cutout(input_file_handle, test_file_handle,
+                            cutout_region_string, 'FITS')
+        test_file_handle.close()
+        input_file_handle.close()
 
     with fits.open(expected_cutout_file_path, mode='readonly') as expected_hdu_list, fits.open(result_cutout_file_path, mode='readonly') as result_hdu_list:
         fits_diff = fits.FITSDiff(expected_hdu_list, result_hdu_list)
@@ -129,7 +127,9 @@ def test_vlass_cube_cutout():
                 expected_wcs.wcs.crval, result_wcs.wcs.crval, 'Wrong CRVAL values.')
             assert expected_hdu.header['NAXIS1'] == result_hdu.header['NAXIS1'], 'Wrong NAXIS1 values.'
             assert expected_hdu.header['NAXIS2'] == result_hdu.header['NAXIS2'], 'Wrong NAXIS2 values.'
-            assert expected_hdu.header.get('CHECKSUM') is None, 'Should not contain CHECKSUM.'
-            assert expected_hdu.header.get('DATASUM') is None, 'Should not contain DATASUM.'
+            assert expected_hdu.header.get(
+                'CHECKSUM') is None, 'Should not contain CHECKSUM.'
+            assert expected_hdu.header.get(
+                'DATASUM') is None, 'Should not contain DATASUM.'
             np.testing.assert_array_equal(
                 np.squeeze(expected_hdu.data), result_hdu.data, 'Arrays do not match.')

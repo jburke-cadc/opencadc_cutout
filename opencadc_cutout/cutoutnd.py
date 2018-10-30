@@ -137,15 +137,19 @@ class CutoutND(object):
             raise ValueError('Invalid position requested (tried to extract {} from {}).'.format(
                 r_position, data_shape))
 
+        self.logger.debug('\n\nData Position: {}\n\nCutout Position: {}\n'.format(data_shape, r_position))
+
         if r_position:
             position = tuple((data_shape[:(len_data - len_pos)]) + r_position)
         else:
             position = None
 
+        self.logger.debug('\n\nFinal Position: {}\n'.format(position))
+
         return (position, shape)
 
     def extract(self, cutout_region):
-        data = np.asanyarray(self.data)
+        data = self.data
         data_shape = data.shape
         position, shape = self._get_position_shape(data_shape, cutout_region)
         self.logger.debug('Position {} and Shape {}'.format(position, shape))
@@ -155,7 +159,7 @@ class CutoutND(object):
             self.logger.debug('Returning entire HDU data for {}'.format(cutout_region.get_extension()))
             cutout_data = data
         else:
-            self.logger.debug('Cutting out {} at {} for {}.'.format(shape, position, cutout_region.get_extension()))
+            self.logger.debug('Cutting out {} at {} for {} from {}.'.format(shape, position, cutout_region.get_extension(), data.shape))
             cutout_data = extract_array(data, shape, position, mode='partial')
 
         if self.wcs is not None:

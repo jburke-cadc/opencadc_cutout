@@ -145,10 +145,10 @@ def test_mef_cutout():
         input_reader.close()
 
     with fits.open(cutout_file_name_path, mode='readonly') as result_hdu_list:
-        assert len(result_hdu_list) == 2, 'Should have 2 HDUs.'
+        assert len(result_hdu_list) == 3, 'Should have 3 HDUs.'
 
-        hdu1 = result_hdu_list[0]
-        hdu2 = result_hdu_list[1]
+        hdu1 = result_hdu_list[1]
+        hdu2 = result_hdu_list[2]
         wcs1 = WCS(header=hdu1.header)
         wcs2 = WCS(header=hdu2.header)
 
