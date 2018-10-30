@@ -98,7 +98,7 @@ def test_sitelle_cube_cutout():
     test_subject = OpenCADCCutout()
     result_cutout_file_path = random_test_file_name_path()
     logger.info('Testing with {}'.format(result_cutout_file_path))
-    cutout_region_string = '[1000:1700,500:1100,165:200]'
+    cutout_region_string = '[1000:1200,800:1000,160:200]'
 
     # Write out a test file with the test result FITS data.
     with open(result_cutout_file_path, 'ab+') as test_file_handle, open(target_file_name, 'rb') as input_file_handle:
@@ -108,10 +108,6 @@ def test_sitelle_cube_cutout():
         input_file_handle.close()
 
     with fits.open(expected_cutout_file_name, mode='readonly', do_not_scale_image_data=True) as expected_hdu_list, fits.open(result_cutout_file_path, mode='readonly', do_not_scale_image_data=True) as result_hdu_list:
-        # fits_diff = fits.FITSDiff(expected_hdu_list, result_hdu_list)
-        # np.testing.assert_array_equal(
-        #     (), fits_diff.diff_hdu_count, 'HDU count diff should be empty.')
-
         for extension, result_hdu in enumerate(result_hdu_list):
             expected_hdu = expected_hdu_list[extension]
 

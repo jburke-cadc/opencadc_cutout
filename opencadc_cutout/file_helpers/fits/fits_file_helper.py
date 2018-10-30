@@ -130,7 +130,7 @@ class FITSHelper(BaseFileHelper):
             cutout_wcs_header = cutout_wcs.to_header(relax=True)
             header.update(cutout_wcs_header)
 
-            if cutout_wcs.sip is not None:  
+            if cutout_wcs.sip is not None:
                 cutout_crpix = cutout_result.wcs_crpix
 
                 for idx, val in enumerate(cutout_crpix):
@@ -181,7 +181,8 @@ class FITSHelper(BaseFileHelper):
                         overwrite=False, output_verify='silentfix', checksum='remove')
             self.output_writer.flush()
         except NoContentError:
-            self.logger.warn('No cutout possible on extension {}.  Skipping...'.format(cutout_dimension.get_extension()))
+            self.logger.warn('No cutout possible on extension {}.  Skipping...'.format(
+                cutout_dimension.get_extension()))
 
     def _pixel_cutout(self, header, data, cutout_dimension):
         extension = cutout_dimension.get_extension()
@@ -245,7 +246,8 @@ class FITSHelper(BaseFileHelper):
                             self._pixel_cutout(
                                 header, hdu.data, cutout_dimension)
             else:
-                self.logger.warn('Unsupported HDU at extension {}.'.format(curr_extension_idx))
+                self.logger.warn(
+                    'Unsupported HDU at extension {}.'.format(curr_extension_idx))
 
     def _iterate_pixel_cutout(self, pixel_cutout_dimensions):
         if pixel_cutout_dimensions is not None and len(pixel_cutout_dimensions) == 1:

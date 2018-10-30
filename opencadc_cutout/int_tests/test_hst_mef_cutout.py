@@ -99,7 +99,7 @@ logger = logging.getLogger()
 
 def test_hst_mef_cutout():
     # Should result in a 4-HDU MEF
-    cutout_region_string = '[SCI,10][80:220,100:150][1][10:16,70:90][106][8:32,88:112][126]'    
+    cutout_region_string = '[SCI,10][80:220,100:150][1][10:16,70:90][106][8:32,88:112][126]'
     test_subject = OpenCADCCutout()
     result_cutout_file_path = random_test_file_name_path(dir_name='/usr/src/app')
 
