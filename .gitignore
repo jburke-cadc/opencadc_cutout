@@ -2,5 +2,5 @@
 .pytest*
 *.egg-info/
 *.pyc
-*.fits
+./*.fits
 github_issue.py
