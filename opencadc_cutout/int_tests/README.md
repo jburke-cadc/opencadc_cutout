@@ -16,8 +16,8 @@ The tests rely on a `/usr/src/data` folder to contain the original FITS file to 
 Docker is the easiest way to run the integration tests.  The `/usr/src/data` folder is expected to contain files for each of these archives:
 
 
-|Archive Name|Source file name|Expected cutout file name|
-|---|---|---|---|---|
+| Archive Name | Source file name | Expected cutout file name |
+| ------------ | ---------------- | ------------------------- |
 |VLASS|test-vlass-cube.fits|test-vlass-cube-cutout.fits|
 |CGPS|test-cgps-cube.fits|test-cgps-cube-cutout.fits|
 |ALMA|test-alma-cube.fits|test-alma-cube-cutout.fits|
