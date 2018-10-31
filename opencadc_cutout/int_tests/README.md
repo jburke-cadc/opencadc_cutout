@@ -15,6 +15,7 @@ The tests rely on a `/usr/src/data` folder to contain the original FITS file to 
 
 Docker is the easiest way to run the integration tests.  The `/usr/src/data` folder is expected to contain files for each of these archives:
 
+
 |Archive Name|Source file name|Expected cutout file name|
 |---|---|---|---|---|
 |VLASS|test-vlass-cube.fits|test-vlass-cube-cutout.fits|
@@ -23,6 +24,7 @@ Docker is the easiest way to run the integration tests.  The `/usr/src/data` fol
 |GMIMS (Currently only proprietary)|test-gmims-cube.fits|test-gmims-cube-cutout.fits|
 |SITELLE (CFHT)|test-sitelle-cube.fits|test-sitelle-cube-cutout.fits|
 |MAST (HST)|test-hst-mef.fits|test-hst-mef-cutout.fits|
+
 
 Ideally, these would be downloaded as needed, but would need a lot of extra time to download each of these.  The VLASS cube, for example, is 76GB in size.
 
