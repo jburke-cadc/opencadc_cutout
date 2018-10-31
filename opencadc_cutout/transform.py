@@ -87,6 +87,9 @@ _DEFAULT_ENERGY_CUNIT = 'm'
 
 
 class Shape(Enum):
+    """
+
+    """
     CIRCLE = 'CIRCLE'
     POLYGON = 'POLYGON'
     BAND = 'BAND'
@@ -172,7 +175,7 @@ class AxisType(object):
 
 class Transform(object):
 
-    def world_to_pixels(self, world_query, header, extension=0):
+    def world_to_pixels(self, world_query, header):
         """
 
         :param world_query: str
@@ -264,7 +267,7 @@ class Transform(object):
         # remove the dummy first list object
         cutouts.pop(0)
 
-        return PixelCutoutHDU(cutouts, extension)
+        return PixelCutoutHDU(cutouts)
 
     @staticmethod
     def parse_world_to_shapes(world_coords):
