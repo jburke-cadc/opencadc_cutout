@@ -9,11 +9,7 @@ time.
 
 ## Running
 
-The tests rely on a `/usr/src/data` folder to contain the original FITS file to be cutout from, as well as a cutout file to compare to.
-
-### Docker
-
-Docker is the easiest way to run the integration tests.  The `/usr/src/data` folder is expected to contain files for each of these archives:
+The tests rely on a `/usr/src/data` folder to contain the original FITS file to be cutout from, as well as a cutout file to compare to, and is expected to contain files for each of these archives:
 
 
 | Archive Name | Source file name | Expected cutout file name |
@@ -25,6 +21,10 @@ Docker is the easiest way to run the integration tests.  The `/usr/src/data` fol
 |SITELLE (CFHT)|test-sitelle-cube.fits|test-sitelle-cube-cutout.fits|
 |MAST (HST)|test-hst-mef.fits|test-hst-mef-cutout.fits|
 
+
+### Docker
+
+Docker is the easiest way to run the integration tests.  The `/usr/src/data` folder should be mounted as a volume.
 
 Ideally, these would be downloaded as needed, but would need a lot of extra time to download each of these.  The VLASS cube, for example, is 76GB in size.
 
