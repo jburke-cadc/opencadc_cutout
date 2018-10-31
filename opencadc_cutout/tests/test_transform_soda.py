@@ -72,10 +72,9 @@ import os
 
 import pytest
 from astropy.io import fits
-from astropy.utils.data import get_pkg_data_contents
 
-from opencadc_cutout.transform import Transform, Shape
 from opencadc_cutout.no_content_error import NoContentError
+from opencadc_cutout.transform import Transform, Shape
 
 pytest.main(args=['-s', os.path.abspath(__file__)])
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))

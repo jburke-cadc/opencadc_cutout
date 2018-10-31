@@ -88,7 +88,7 @@ _DEFAULT_ENERGY_CUNIT = 'm'
 
 class Shape(Enum):
     """
-
+    Enum of allowed query shapes.
     """
     CIRCLE = 'CIRCLE'
     POLYGON = 'POLYGON'
@@ -98,6 +98,9 @@ class Shape(Enum):
 
 
 class PolarizationState(Enum):
+    """
+    Enum of polarization states.
+    """
     I = 1
     Q = 2
     U = 3
@@ -120,7 +123,7 @@ class PolarizationState(Enum):
 
 class AxisType(object):
     """
-
+    Extracts the axis number for each coordinate type.
     """
 
     COORDINATE_TYPE = 'coordinate_type'
@@ -161,15 +164,31 @@ class AxisType(object):
                 raise ValueError('Unknown axis keyword {}'.format(coordinate_type))
 
     def get_spatial_axes(self):
+        """
+        Get a list of the spatial axis numbers.
+        :return: List[int], the two spatial axis numbers, or None if no spatial axes.
+        """
         return [self.spatial_1, self.spatial_2]
 
     def get_spectral_axis(self):
+        """
+        Get the spectral axis number.
+        :return: int, the spectral axis number, or None if no spectral axis.
+        """
         return self.spectral
 
     def get_temporal_axis(self):
+        """
+        Get the temporal axis number.
+        :return: int, the temporal axis number, or None if no temporal axis.
+        """
         return self.temporal
 
     def get_polarization_axis(self):
+        """
+        Get the polarization axis number.
+        :return: int, the polarization axis number, or None if no polarization axis.
+        """
         return self.polarization
 
 
@@ -177,11 +196,11 @@ class Transform(object):
 
     def world_to_pixels(self, world_query, header):
         """
+        Convert a query in world coordinates to pixel coordinates for the given FITS extension header.
 
-        :param world_query: str
-        :param header: Header
-        :param extension: int or string
-        :return: PixelCutoutHDU
+        :param world_query: str The world coordinate query.
+        :param header: Header   The FITS header
+        :return: PixelCutoutHDU containing the pixel coordinates.
         """
 
         # clean up query string
@@ -270,20 +289,29 @@ class Transform(object):
         return PixelCutoutHDU(cutouts)
 
     @staticmethod
-    def parse_world_to_shapes(world_coords):
+    def parse_world_to_shapes(world_query):
         """
+        Parse the world query into a list of tuples containing the Shape and Shape parameters.
 
-        :param world_coords: str
-        :return: List of tuple List[tuple]
+        :param world_query: str The world query string.
+        :return: List[tuple] A list of tuples containing the Shape and parameters.
         """
-        # split query parameters on &
-        coords = world_coords.strip().split('&')
+        # split the query parameters into a list
+        query = world_query.strip().split('&')
 
         world_list = []
-        for coord in coords:
-            arguments = coord.split('=')
+        for coords in query:
+
+            # split the parameter into a key value pair
+            arguments = coords.split('=')
+
+            # Shape class of the parameter key
             shape = Shape(arguments[0].upper())
+
+            # split the parameter values into a list
             parameters = arguments[1].split()
+
+            # Polarization parameters are strings, all others convert to floats
             if shape == Shape.POL:
                 world_list.append((shape, parameters))
             else:
@@ -292,26 +320,28 @@ class Transform(object):
 
     def get_circle_cutout_pixels(self, coords, header, naxis1, naxis2):
         """
+        Get the pixels coordinates for a Circle query using the given FITS header.
 
-        :param coords: List of float
-        :param header: Header
-        :param naxis1: int
-        :param naxis2: int
-        :return: List of int
+        :param coords: List of float    List of RA, Dec, and radius for a Circle
+        :param header: Header   FITS extension header
+        :param naxis1: int  First spatial axis
+        :param naxis2: int  Second spatial axis
+        :return: List[int] The x and y pairs of the pixel coordinates
         """
 
+        # Circle should have 3 parameters, RA, Dec, radius
         if len(coords) != 3:
             raise ValueError('Circle requires 3 parameters, found {}'.format(coords))
 
-        # query sky position
+        # sky coordinates from the Circle
         ra = Longitude(coords[0], unit=u.deg)
         dec = Latitude(coords[1], unit=u.deg)
         radius = u.Quantity(coords[2], unit=u.deg)
         sky_coords = SkyCoord(ra, dec, frame=ICRS)
 
-        # WCS from the header, extract only the spatial axes, because the sky to pix
-        # transform will want to convert every axis in the wcs, and we only have
-        # spatial data to convert.
+        # WCS from the header, extract only the spatial axes wcs, the sky to pix
+        # transform will want to convert each axis in the wcs, and we only have
+        # spatial data.
         wcs = WCS(header, naxis=[naxis1, naxis2])
 
         # Circle region with radius
@@ -335,14 +365,16 @@ class Transform(object):
 
     def get_polygon_cutout_pixels(self, vertices, header, naxis1, naxis2):
         """
+        Get the pixels coordinates for a Circle query using the given FITS header.
 
-        :param vertices: List of float
-        :param header: Header
-        :param naxis1: int
-        :param naxis2: int
-        :return: List of int
+        :param vertices: List[float]  List of vertices of the polygon
+        :param header: Header   FITS extension header
+        :param naxis1: int  First spatial axis
+        :param naxis2: int  Second spatial axis
+        :return: List[int] The x and y pairs of the cutout pixel coordinates
         """
 
+        # polygon must have a minimum of 3 vertices where each vertices is two values.
         if len(vertices) < 6:
             raise ValueError('Polygon requires 6 or more parameters, found {}'.format(vertices))
 
@@ -382,19 +414,22 @@ class Transform(object):
 
     def get_energy_cutout_pixels(self, bounds, header, naxis):
         """
+        Get the pixels coordinates for a spectral query using the given FITS header.
 
-        :param bounds: List of float
-        :param header: Header
-        :param naxis: int
-        :return: List of int
+        :param bounds: List[float] The bounds of the spectral query.
+        :param header: Header   FITS extension header
+        :param naxis: int   Spectral axis number
+        :return: List[int] The two cutout pixel coordinates
         """
+
+        # spectral bounds must have lower and upper values
         if len(bounds) != 2:
             raise ValueError('Energy requires 2 parameters, found {}'.format(bounds))
 
         # WCS from the header
         wcs = WCS(header)
 
-        # if the energy wcs isn't a wavelength, transform the
+        # if the spectral wcs isn't a wavelength, transform the
         # spectral axis to wavelength.
         ctype = header.get('CTYPE{}'.format(naxis))
         if ctype and not ctype.startswith('WAVE'):
@@ -404,7 +439,7 @@ class Transform(object):
                 error = 'wcslib error transforming from {} to {}: {}'.format(ctype, _DEFAULT_ENERGY_CTYPE, repr(e))
                 raise ValueError(error)
 
-        # slice out the energy wcs
+        # slice out the spectral wcs
         energy_wcs = wcs.sub([naxis])
 
         # convert from world to pixel coordinates
@@ -419,25 +454,33 @@ class Transform(object):
 
     def get_time_cutout_pixels(self, bounds, header, naxis):
         """
+        Get the pixels coordinates for a temporal query using the given FITS header.
 
-        :param bounds: List of float
-        :param header: Header
-        :param naxis: int
-        :return: List of int
+        :param bounds: List[float]  The bounds of the temporal query.
+        :param header: Header   FITS extension header
+        :param naxis: int   Temporal axis number
+        :return: List[int] The two cutout pixel coordinates
         """
-        if len(bounds) != 2:
+
+        # temporal bounds must have lower and upper values
+        if not bounds:
             raise ValueError('Time requires 2 parameters, found {}'.format(bounds))
 
         return []
 
     def get_polarization_cutout_pixels(self, states, header, naxis):
         """
+        Get the pixels coordinates for a polarization query using the given FITS header.
 
-        :param states: List of string
-        :param header: Header
-        :param naxis: int
-        :return: List of int
+        :param states: List[str]    The polarization states
+        :param header: Header   FITS extension header
+        :param naxis: int   Polarization axis number
+        :return: List[int] The two cutout pixel coordinates
         """
+
+        # must have minimum of one polarization state
+        if not states:
+            raise ValueError('Polarization requires at least one state')
 
         crval = header.get('CRVAL{}'.format(naxis))
         crpix = header.get('CRPIX{}'.format(naxis))
@@ -473,15 +516,16 @@ class Transform(object):
 
     @staticmethod
     def do_position_clip_check(w, h, x1, x2, y1, y2):
-
         """
-        :param w: int
-        :param h: int
-        :param x1: int
-        :param x2: int
-        :param y1: int
-        :param y2: int
-        :return: None if no pixels returned, empty list if all pixels returned, else coordinates of returned pixels
+        Trim the cutout coordinates to fit within the image bounds.
+
+        :param w: int   Width of the image
+        :param h: int   Height of the image
+        :param x1: int  Lower x cutout coordinate
+        :param x2: int  Upper x cutout coordinate
+        :param y1: int  Lower y cutout coordinate
+        :param y2: int  Upper y cutout coordinate
+        :return: List[int] The coordinates pixels within the images bounds
         """
 
         # bounds check
@@ -500,11 +544,12 @@ class Transform(object):
     @staticmethod
     def do_energy_clip_check(naxis, lower, upper):
         """
+        Trim the cutout coordinates to fit within the spectral axis.
 
-        :param naxis: int
-        :param lower: float
-        :param upper: float
-        :return: List of int
+        :param naxis: int   Length of the spectral axis
+        :param lower: float Lower cutout bounds
+        :param upper: float Upper cutout bounds
+        :return: List[int]  The coordinate pixels within the spectral axis.
         """
 
         # round floats to individual pixels
@@ -530,13 +575,27 @@ class Transform(object):
         return [z1, z2]
 
     @staticmethod
-    def do_polarization_clip_check(naxis, lower, upper):
+    def do_time_clip_check(naxis, lower, upper):
+        """
+        Trim the cutout coordinates to fit within the temporal axis.
+
+        :param naxis: int   Length of the temporal axis
+        :param lower: float Lower cutout bounds
+        :param upper: float Upper cutout bounds
+        :return: List[int]  The coordinate pixels within the temporal axis.
         """
 
-        :param naxis: int
-        :param lower: float
-        :param upper: float
-        :return: List of int
+        return []
+
+    @staticmethod
+    def do_polarization_clip_check(naxis, lower, upper):
+        """
+        Trim the cutout coordinates to fit within the polarization axis.
+
+        :param naxis: int   Length of the polarization axis
+        :param lower: float Lower cutout bounds
+        :param upper: float Upper cutout bounds
+        :return: List[int]  The coordinate pixels within the polarization axis.
         """
 
         # round floats to individual pixels
@@ -558,25 +617,13 @@ class Transform(object):
         return [p1, p2]
 
     @staticmethod
-    def do_time_clip_check(naxis, axis, lower, upper):
-        """
-
-        :param naxis: int
-        :param axis: int
-        :param lower: int
-        :param upper: int
-        :return: List of int
-        """
-
-        return []
-
-    @staticmethod
     def get_wcs_polarization_states(header, naxis):
         """
+        Get the polarization states from the FITS header.
 
-        :param header: header
-        :param naxis: int
-        :return: List of PolarizationState
+        :param header: Header   The FITS header
+        :param naxis: int   The polarization axis number
+        :return: List[PolarizationState]    List of PolarizationState in the header
         """
 
         pol_crval = header.get('CRVAL{}'.format(naxis))

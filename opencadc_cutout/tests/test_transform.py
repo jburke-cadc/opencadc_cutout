@@ -74,7 +74,6 @@ import os
 
 import pytest
 from astropy.io import fits
-from astropy.wcs import WCS
 
 from opencadc_cutout.no_content_error import NoContentError
 from opencadc_cutout.transform import AxisType, Shape, Transform
