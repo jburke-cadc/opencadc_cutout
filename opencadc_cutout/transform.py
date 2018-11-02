@@ -203,16 +203,13 @@ class Transform(object):
         :return: PixelCutoutHDU containing the pixel coordinates.
         """
 
-        # clean up query string
-        query = world_query.strip().replace('+', ' ')
-
-        # parse query into list of tuples containing shapes and parameters
-        shapes = self.parse_world_to_shapes(query)
+        # parse query into list of shapes and shape parameters
+        shapes = self.parse_world_to_shapes(world_query)
 
         # coordinate axis numbers
         axis_types = AxisType(header)
 
-        # list of naxis length with default cutout parameters
+        # list of NAXIS length, with 1 to NAXIS[1|2|3|4] pixel coordinates,
         # add a dummy object to the start of the list so the axes
         # align with the list index, remove it at the end.
         cutouts = [(0, 0)]
@@ -229,12 +226,17 @@ class Transform(object):
         # raise no content error if an axis has no overlap
         for shape in shapes:
             name = shape[0]
-            parameters = shape[1]
+            values = shape[1]
             if name == Shape.CIRCLE:
                 try:
+                    # length of the two axes
                     naxis1 = axis_types.get_spatial_axes()[0]
                     naxis2 = axis_types.get_spatial_axes()[1]
-                    pixels = self.get_circle_cutout_pixels(parameters, header, naxis1, naxis2)
+
+                    # get the cutout pixels
+                    pixels = self.get_circle_cutout_pixels(header, naxis1, naxis2, [float(i) for i in values])
+
+                    # remove default cutouts and add query cutout
                     cutouts.pop(naxis1)
                     cutouts.insert(naxis1, (pixels[0], pixels[1]))
                     cutouts.pop(naxis2)
@@ -243,9 +245,14 @@ class Transform(object):
                     no_content_errors.append(repr(e))
             elif name == Shape.POLYGON:
                 try:
+                    # length of the two axes
                     naxis1 = axis_types.get_spatial_axes()[0]
                     naxis2 = axis_types.get_spatial_axes()[1]
-                    pixels = self.get_polygon_cutout_pixels(parameters, header, naxis1, naxis2)
+
+                    # get the cutout pixels
+                    pixels = self.get_polygon_cutout_pixels(header, naxis1, naxis2, [float(i) for i in values])
+
+                    # remove default cutouts and add query cutout
                     cutouts.pop(naxis1)
                     cutouts.insert(naxis1, (pixels[0], pixels[1]))
                     cutouts.pop(naxis2)
@@ -254,36 +261,49 @@ class Transform(object):
                     no_content_errors.append(repr(e))
             elif name == Shape.BAND:
                 try:
+                    # length of the spectral axis
                     naxis = axis_types.get_spectral_axis()
-                    pixels = self.get_energy_cutout_pixels(parameters, header, naxis)
+
+                    # get the cutout pixels
+                    pixels = self.get_energy_cutout_pixels(header, naxis, [float(i) for i in values])
+
+                    # remove default cutouts and add query cutout
                     cutouts.pop(naxis)
                     cutouts.insert(naxis, (pixels[0], pixels[1]))
                 except NoContentError as e:
                     no_content_errors.append(repr(e))
             elif name == Shape.TIME:
                 try:
+                    # length of the temporal axis
                     naxis = axis_types.get_temporal_axis()
-                    pixels = self.get_time_cutout_pixels(parameters, header, naxis)
+
+                    # get the cutout pixels
+                    pixels = self.get_time_cutout_pixels(header, naxis, [float(i) for i in values])
+
+                    # remove default cutouts and add query cutout
                     cutouts.pop(naxis)
                     cutouts.insert(naxis, (pixels[0], pixels[1]))
                 except NoContentError as e:
                     no_content_errors.append(repr(e))
             elif name == Shape.POL:
                 try:
+                    # length of the polarization axis
                     naxis = axis_types.get_polarization_axis()
-                    pixels = self.get_polarization_cutout_pixels(parameters, header, naxis)
+
+                    # get the cutout pixels
+                    pixels = self.get_polarization_cutout_pixels(header, naxis, values)
+
+                    # remove default cutouts and add query cutout
                     cutouts.pop(naxis)
                     cutouts.insert(naxis, (pixels[0], pixels[1]))
                 except NoContentError as e:
                     no_content_errors.append(repr(e))
-            else:
-                raise ValueError('Unknown shape {} in query {}'.format(name, world_query))
 
         # check for no content errors
         if no_content_errors:
             raise NoContentError('\n'.join(no_content_errors))
 
-        # remove the dummy first list object
+        # remove the dummy first list item
         cutouts.pop(0)
 
         return PixelCutoutHDU(cutouts)
@@ -296,36 +316,47 @@ class Transform(object):
         :param world_query: str The world query string.
         :return: List[tuple] A list of tuples containing the Shape and parameters.
         """
-        # split the query parameters into a list
-        query = world_query.strip().split('&')
+        # clean up query string and split the query parameters into a list
+        query = world_query.strip().replace('+', ' ').split('&')
 
-        world_list = []
-        for coords in query:
+        # throwaway list to check for duplicate keys in the query parameters
+        keys = []
+
+        # parse the query into a list of parameter keys and values
+        shapes = []
+        for parameter in query:
 
             # split the parameter into a key value pair
-            arguments = coords.split('=')
+            key_values = parameter.split('=')
 
-            # Shape class of the parameter key
-            shape = Shape(arguments[0].upper())
-
-            # split the parameter values into a list
-            parameters = arguments[1].split()
-
-            # Polarization parameters are strings, all others convert to floats
-            if shape == Shape.POL:
-                world_list.append((shape, parameters))
+            # check for duplicate keys
+            key = key_values[0].upper()
+            if key not in keys:
+                keys.append(key)
             else:
-                world_list.append((shape, [float(i) for i in parameters]))
-        return world_list
+                raise ValueError('Duplicate query parameter key {} in {}'.format(key, query))
 
-    def get_circle_cutout_pixels(self, coords, header, naxis1, naxis2):
+            # Shape enum of the parameter key
+            try:
+                shape = Shape(key)
+            except KeyError:
+                raise ValueError('Unknown query parameter key {} in {}'.format(key, query))
+
+            # split the parameter values into a values list
+            values = key_values[1].split()
+
+            shapes.append((shape, values))
+
+        return shapes
+
+    def get_circle_cutout_pixels(self, header, naxis1, naxis2, coords):
         """
         Get the pixels coordinates for a Circle query using the given FITS header.
 
-        :param coords: List of float    List of RA, Dec, and radius for a Circle
         :param header: Header   FITS extension header
         :param naxis1: int  First spatial axis
         :param naxis2: int  Second spatial axis
+        :param coords: List of float    List of RA, Dec, and radius for a Circle
         :return: List[int] The x and y pairs of the pixel coordinates
         """
 
@@ -363,14 +394,14 @@ class Transform(object):
         y_axis = header.get('NAXIS{}'.format(naxis2))
         return self.do_position_clip_check(x_axis, y_axis, x_min, x_max, y_min, y_max)
 
-    def get_polygon_cutout_pixels(self, vertices, header, naxis1, naxis2):
+    def get_polygon_cutout_pixels(self, header, naxis1, naxis2, vertices):
         """
         Get the pixels coordinates for a Circle query using the given FITS header.
 
-        :param vertices: List[float]  List of vertices of the polygon
         :param header: Header   FITS extension header
         :param naxis1: int  First spatial axis
         :param naxis2: int  Second spatial axis
+        :param vertices: List[float]  List of vertices of the polygon
         :return: List[int] The x and y pairs of the cutout pixel coordinates
         """
 
@@ -412,13 +443,13 @@ class Transform(object):
         y_axis = header.get('NAXIS{}'.format(naxis2))
         return self.do_position_clip_check(x_axis, y_axis, x_min, x_max, y_min, y_max)
 
-    def get_energy_cutout_pixels(self, bounds, header, naxis):
+    def get_energy_cutout_pixels(self, header, naxis, bounds):
         """
         Get the pixels coordinates for a spectral query using the given FITS header.
 
-        :param bounds: List[float] The bounds of the spectral query.
         :param header: Header   FITS extension header
         :param naxis: int   Spectral axis number
+        :param bounds: List[float] The bounds of the spectral query.
         :return: List[int] The two cutout pixel coordinates
         """
 
@@ -452,13 +483,13 @@ class Transform(object):
         pixels = self.do_energy_clip_check(length, lower, upper)
         return pixels
 
-    def get_time_cutout_pixels(self, bounds, header, naxis):
+    def get_time_cutout_pixels(self, header, naxis, bounds):
         """
         Get the pixels coordinates for a temporal query using the given FITS header.
 
-        :param bounds: List[float]  The bounds of the temporal query.
         :param header: Header   FITS extension header
         :param naxis: int   Temporal axis number
+        :param bounds: List[float]  The bounds of the temporal query.
         :return: List[int] The two cutout pixel coordinates
         """
 
@@ -468,13 +499,13 @@ class Transform(object):
 
         return []
 
-    def get_polarization_cutout_pixels(self, states, header, naxis):
+    def get_polarization_cutout_pixels(self, header, naxis, states):
         """
         Get the pixels coordinates for a polarization query using the given FITS header.
 
-        :param states: List[str]    The polarization states
         :param header: Header   FITS extension header
         :param naxis: int   Polarization axis number
+        :param states: List[str]    The polarization states
         :return: List[int] The two cutout pixel coordinates
         """
 

@@ -84,31 +84,22 @@ TESTDATA_DIR = os.path.join(THIS_DIR, 'data')
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger()
 
-# Header from ad:IRIS/I212B2H0.fits
-QUERY_HEADER = 'IRIS-I212B2H0.fits.hdr'
+# IRIS 3D spectral cube I212B2H0.fits
+IRIS_3D_CUBE_HEADER = 'iris-3d-cube.hdr'
 
-# Header from ad:CGPS/CGPS_MA1_HI_line_image.fits
-CUBE_HEADER = 'CGPS-CGPS_MA1_HI_line_image.fits.hdr'
+# CGPS 4D cube CGPS_MA1_HI_line_image.fits
+CGPS_4D_CUBE_HEADER = 'cgps-4d-cube.hdr'
 
-# Header from ad:MACHO/cal000400r.fits.fz
-NAMED_PART_HEADER = 'MACHO-cal000400r.fits.fz.hdr'
+# VLASS 4D cube VLASS1.1.cc.T29t05.J110448+763000.10.2048.v1.fits
+VLASS_4D_CUBE_HEADER = 'vlass-4d-cube.hdr'
 
-# Header from ad:CFHT/1598392i.fits.gz
-TILED_CHUNK_HEADER = 'CFHT-1598392i.fits.gz.hdr'
-
-# Header from ad:CFHT/1598421p.fits.gz
-TILED_MULTICHUNK_HEADER = 'CFHT-1598421p.fits.gz.hdr'
-
-# VLASS 4D cube
-VLASS_HEADER = 'VLASS1.1.cc.T29t05.J110448+763000.10.2048.v1.fits.hdr'
-
-# JCMT spectral cube
-JCMT_HEADER = 'JCMT-jcmth20181022_00048_01_reduced001_obs_000.fits.hdr'
+# JCMT 3D spectral cube JCMT-jcmth20181022_00048_01_reduced001_obs_000.fits
+JCMT_3D_CUBE_HEADER = 'jcmt-3d-cube.hdr'
 
 
 # @pytest.mark.skip
 def test_axis_type():
-    header_filename = os.path.join(TESTDATA_DIR, VLASS_HEADER)
+    header_filename = os.path.join(TESTDATA_DIR, VLASS_4D_CUBE_HEADER)
     header = fits.Header.fromtextfile(header_filename)
 
     test_subject = AxisType(header)
@@ -139,9 +130,9 @@ def test_parse_world_to_shapes():
     assert shape[0] == Shape.CIRCLE
     coordinates = shape[1]
     assert len(coordinates) == 3
-    assert coordinates[0] == 1.0
-    assert coordinates[1] == 2.0
-    assert coordinates[2] == 3.0
+    assert coordinates[0] == '1.0'
+    assert coordinates[1] == '2.0'
+    assert coordinates[2] == '3.0'
 
     cutout = "POLYGON=1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0"
     shapes = test_subject.parse_world_to_shapes(cutout)
@@ -150,14 +141,14 @@ def test_parse_world_to_shapes():
     assert shape[0] == Shape.POLYGON
     coordinates = shape[1]
     assert len(coordinates) == 8
-    assert coordinates[0] == 1.0
-    assert coordinates[1] == 2.0
-    assert coordinates[2] == 3.0
-    assert coordinates[3] == 4.0
-    assert coordinates[4] == 5.0
-    assert coordinates[5] == 6.0
-    assert coordinates[6] == 7.0
-    assert coordinates[7] == 8.0
+    assert coordinates[0] == '1.0'
+    assert coordinates[1] == '2.0'
+    assert coordinates[2] == '3.0'
+    assert coordinates[3] == '4.0'
+    assert coordinates[4] == '5.0'
+    assert coordinates[5] == '6.0'
+    assert coordinates[6] == '7.0'
+    assert coordinates[7] == '8.0'
 
     cutout = "BAND=1.0 2.0"
     shapes = test_subject.parse_world_to_shapes(cutout)
@@ -166,8 +157,8 @@ def test_parse_world_to_shapes():
     assert shape[0] == Shape.BAND
     coordinates = shape[1]
     assert len(coordinates) == 2
-    assert coordinates[0] == 1.0
-    assert coordinates[1] == 2.0
+    assert coordinates[0] == '1.0'
+    assert coordinates[1] == '2.0'
 
     cutout = "TIME=1.0 2.0"
     shapes = test_subject.parse_world_to_shapes(cutout)
@@ -176,8 +167,8 @@ def test_parse_world_to_shapes():
     assert shape[0] == Shape.TIME
     coordinates = shape[1]
     assert len(coordinates) == 2
-    assert coordinates[0] == 1.0
-    assert coordinates[1] == 2.0
+    assert coordinates[0] == '1.0'
+    assert coordinates[1] == '2.0'
 
     cutout = "POL=LL XX"
     shapes = test_subject.parse_world_to_shapes(cutout)
@@ -196,36 +187,36 @@ def test_parse_world_to_shapes():
     assert shape[0] == Shape.CIRCLE
     coordinates = shape[1]
     assert len(coordinates) == 3
-    assert coordinates[0] == 1.0
-    assert coordinates[1] == 2.0
-    assert coordinates[2] == 3.0
+    assert coordinates[0] == '1.0'
+    assert coordinates[1] == '2.0'
+    assert coordinates[2] == '3.0'
 
     shape = shapes[1]
     assert shape[0] == Shape.POLYGON
     coordinates = shape[1]
     assert len(coordinates) == 8
-    assert coordinates[0] == 1.0
-    assert coordinates[1] == 2.0
-    assert coordinates[2] == 3.0
-    assert coordinates[3] == 4.0
-    assert coordinates[4] == 5.0
-    assert coordinates[5] == 6.0
-    assert coordinates[6] == 7.0
-    assert coordinates[7] == 8.0
+    assert coordinates[0] == '1.0'
+    assert coordinates[1] == '2.0'
+    assert coordinates[2] == '3.0'
+    assert coordinates[3] == '4.0'
+    assert coordinates[4] == '5.0'
+    assert coordinates[5] == '6.0'
+    assert coordinates[6] == '7.0'
+    assert coordinates[7] == '8.0'
 
     shape = shapes[2]
     assert shape[0] == Shape.BAND
     coordinates = shape[1]
     assert len(coordinates) == 2
-    assert coordinates[0] == 1.0
-    assert coordinates[1] == 2.0
+    assert coordinates[0] == '1.0'
+    assert coordinates[1] == '2.0'
 
     shape = shapes[3]
     assert shape[0] == Shape.TIME
     coordinates = shape[1]
     assert len(coordinates) == 2
-    assert coordinates[0] == 1.0
-    assert coordinates[1] == 2.0
+    assert coordinates[0] == '1.0'
+    assert coordinates[1] == '2.0'
 
     shape = shapes[4]
     assert shape[0] == Shape.POL
@@ -237,13 +228,13 @@ def test_parse_world_to_shapes():
 
 # @pytest.mark.skip
 def test_get_circle_cutout_pixels_vlass():
-    header_filename = os.path.join(TESTDATA_DIR, VLASS_HEADER)
+    header_filename = os.path.join(TESTDATA_DIR, VLASS_4D_CUBE_HEADER)
     header = fits.Header.fromtextfile(header_filename)
 
     coords = [168.34719985367971, 76.18699791158396, 0.01]
 
     test_subject = Transform()
-    pixels = test_subject.get_circle_cutout_pixels(coords, header, 1, 2)
+    pixels = test_subject.get_circle_cutout_pixels(header, 1, 2, coords)
 
     assert pixels is not None
     assert len(pixels) == 4
@@ -255,13 +246,13 @@ def test_get_circle_cutout_pixels_vlass():
 
 # @pytest.mark.skip
 def test_get_circle_cutout_pixels_cgps_galactic():
-    header_filename = os.path.join(TESTDATA_DIR, CUBE_HEADER)
+    header_filename = os.path.join(TESTDATA_DIR, CGPS_4D_CUBE_HEADER)
     header = fits.Header.fromtextfile(header_filename)
 
     coords = [25.0, 60.0, 0.5]
 
     test_subject = Transform()
-    pixels = test_subject.get_circle_cutout_pixels(coords, header, 1, 2)
+    pixels = test_subject.get_circle_cutout_pixels(header, 1, 2, coords)
 
     # SODA returns [0][350:584,136:370]
     assert pixels is not None
@@ -273,14 +264,14 @@ def test_get_circle_cutout_pixels_cgps_galactic():
 
 # @pytest.mark.skip
 def test_get_circle_cutout_pixels_iris_no_overlap():
-    header_filename = os.path.join(TESTDATA_DIR, QUERY_HEADER)
+    header_filename = os.path.join(TESTDATA_DIR, IRIS_3D_CUBE_HEADER)
     header = fits.Header.fromtextfile(header_filename)
 
     coords = [20.0, 20.0, 0.1]
 
     test_subject = Transform()
     try:
-        pixels = test_subject.get_circle_cutout_pixels(coords, header, 1, 2)
+        pixels = test_subject.get_circle_cutout_pixels(header, 1, 2, coords)
         assert False, 'Should raise NoContentError.'
     except NoContentError:
         assert True
@@ -288,13 +279,13 @@ def test_get_circle_cutout_pixels_iris_no_overlap():
 
 # @pytest.mark.skip
 def test_get_circle_cutout_pixels_iris_all_overlap():
-    header_filename = os.path.join(TESTDATA_DIR, QUERY_HEADER)
+    header_filename = os.path.join(TESTDATA_DIR, IRIS_3D_CUBE_HEADER)
     header = fits.Header.fromtextfile(header_filename)
 
     coords = [140.0, 0.0, 10.0]
 
     test_subject = Transform()
-    pixels = test_subject.get_circle_cutout_pixels(coords, header, 1, 2)
+    pixels = test_subject.get_circle_cutout_pixels(header, 1, 2, coords)
 
     # cutout pixels: -125:676, -143:659
     # cutout returning entire image returns empty list
@@ -308,13 +299,13 @@ def test_get_circle_cutout_pixels_iris_all_overlap():
 
 # @pytest.mark.skip
 def test_get_polygon_cutout_pixels_vlass():
-    header_filename = os.path.join(TESTDATA_DIR, VLASS_HEADER)
+    header_filename = os.path.join(TESTDATA_DIR, VLASS_4D_CUBE_HEADER)
     header = fits.Header.fromtextfile(header_filename)
 
     coords = [168.34, 76.18, 168.34, 76.19, 168.35, 76.19]
 
     test_subject = Transform()
-    pixels = test_subject.get_polygon_cutout_pixels(coords, header, 1, 2)
+    pixels = test_subject.get_polygon_cutout_pixels(header, 1, 2, coords)
 
     # SODA returns cutout=[0][2997:3011,4211:4272,*,*]
     assert pixels is not None
@@ -331,13 +322,13 @@ def test_get_energy_cutout_pixels_vlass():
     BAND 0.04456576 0.11662493
     cutout=[1:2]
     """
-    header_filename = os.path.join(TESTDATA_DIR, VLASS_HEADER)
+    header_filename = os.path.join(TESTDATA_DIR, VLASS_4D_CUBE_HEADER)
     header = fits.Header.fromtextfile(header_filename)
 
     coords = [0.04456576, 0.11662493]
 
     test_subject = Transform()
-    pixels = test_subject.get_energy_cutout_pixels(coords, header, 3)
+    pixels = test_subject.get_energy_cutout_pixels(header, 3, coords)
 
     # SODA returns cutout=[0][*,*,1:2,*]
     # library returns (before clipping) [2.79849082, 0.79277332] pixels
@@ -355,14 +346,14 @@ def test_get_energy_cutout_pixels_cgps_raises_error():
         python wcslib wrapper will raise a ValueError.
 
     """
-    header_filename = os.path.join(TESTDATA_DIR, CUBE_HEADER)
+    header_filename = os.path.join(TESTDATA_DIR, CGPS_4D_CUBE_HEADER)
     header = fits.Header.fromtextfile(header_filename)
 
     coords = [211.0e-3, 211.05e-3]
 
     test_subject = Transform()
     try:
-        pixels = test_subject.get_energy_cutout_pixels(coords, header, 3)
+        pixels = test_subject.get_energy_cutout_pixels(header, 3, coords)
         assert False, 'Should raise ValueError.'
     except ValueError:
         assert True
@@ -372,7 +363,7 @@ def test_get_energy_cutout_pixels_cgps_raises_error():
 # always returns the ref pixel, possibly the header is incomplete???
 @pytest.mark.skip
 def test_get_energy_cutout_pixels_jcmt():
-    header_filename = os.path.join(TESTDATA_DIR, JCMT_HEADER)
+    header_filename = os.path.join(TESTDATA_DIR, JCMT_3D_CUBE_HEADER)
     header = fits.Header.fromtextfile(header_filename)
 
     # cdelt3 from caom2: 3.05140426249E-5
@@ -381,7 +372,7 @@ def test_get_energy_cutout_pixels_jcmt():
     coords = [0.00091067,  0.00091012]
 
     test_subject = Transform()
-    pixels = test_subject.get_energy_cutout_pixels(coords, header, 3)
+    pixels = test_subject.get_energy_cutout_pixels(header, 3, coords)
 
     # caom2ops returns cutout=[0][*,*,290:6810]&cutout=[1][*,*,290:6810]
     assert pixels is not None
@@ -395,13 +386,13 @@ def test_get_polarization_cutout_pixels_vlass():
     """
     Polarization states are I, Q, U, V (1, 2, 3, 4)
     """
-    header_filename = os.path.join(TESTDATA_DIR, VLASS_HEADER)
+    header_filename = os.path.join(TESTDATA_DIR, VLASS_4D_CUBE_HEADER)
     header = fits.Header.fromtextfile(header_filename)
 
     coords = ['I']
 
     test_subject = Transform()
-    pixels = test_subject.get_polarization_cutout_pixels(coords, header, 4)
+    pixels = test_subject.get_polarization_cutout_pixels(header, 4, coords)
 
     # SODA returns [*,*,*,1:1]
     assert pixels is not None
@@ -411,7 +402,7 @@ def test_get_polarization_cutout_pixels_vlass():
 
     coords = ['I', 'Q']
 
-    pixels = test_subject.get_polarization_cutout_pixels(coords, header, 4)
+    pixels = test_subject.get_polarization_cutout_pixels(header, 4, coords)
 
     # should return [1:2]
     assert pixels is not None
@@ -421,7 +412,7 @@ def test_get_polarization_cutout_pixels_vlass():
 
     coords = ['I', 'Q', 'U']
 
-    pixels = test_subject.get_polarization_cutout_pixels(coords, header, 4)
+    pixels = test_subject.get_polarization_cutout_pixels(header, 4, coords)
 
     # should return [1:3]
     assert pixels is not None
@@ -431,7 +422,7 @@ def test_get_polarization_cutout_pixels_vlass():
 
     coords = ['I', 'Q', 'U', 'V']
 
-    pixels = test_subject.get_polarization_cutout_pixels(coords, header, 4)
+    pixels = test_subject.get_polarization_cutout_pixels(header, 4, coords)
 
     # should return [1:4]
     assert pixels is not None
@@ -441,7 +432,7 @@ def test_get_polarization_cutout_pixels_vlass():
 
     coords = ['I', 'V']
 
-    pixels = test_subject.get_polarization_cutout_pixels(coords, header, 4)
+    pixels = test_subject.get_polarization_cutout_pixels(header, 4, coords)
 
     # should return [1:4]
     assert pixels is not None
@@ -459,13 +450,13 @@ def test_get_polarization_cutout_pixels_cgps():
     CDELT4  =        1.0000000E+00 / DELTA COORD.
     CROTA4  =                 0.00 / ROTATION ANGLE (DEG)
     """
-    header_filename = os.path.join(TESTDATA_DIR, CUBE_HEADER)
+    header_filename = os.path.join(TESTDATA_DIR, CGPS_4D_CUBE_HEADER)
     header = fits.Header.fromtextfile(header_filename)
 
     coords = ['I']
 
     test_subject = Transform()
-    pixels = test_subject.get_polarization_cutout_pixels(coords, header, 4)
+    pixels = test_subject.get_polarization_cutout_pixels(header, 4, coords)
 
     # SODA returns [*,*,*,1:1]
     assert pixels is not None
@@ -480,7 +471,7 @@ def test_world_to_pixels_vlass():
     CIRCLE 168.34719985367971 76.18699791158396 0.01 BAND 0.04456576 0.11662493 POL I
     cutout=[0][2938:3062,4191:4316,1:2,1:1]
     """
-    header_filename = os.path.join(TESTDATA_DIR, VLASS_HEADER)
+    header_filename = os.path.join(TESTDATA_DIR, VLASS_4D_CUBE_HEADER)
     header = fits.Header.fromtextfile(header_filename)
 
     query = 'circle=168.34719985367971+76.18699791158396+0.01&BAND=0.04456576+0.11662493&POL=I'

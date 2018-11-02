@@ -82,20 +82,20 @@ TESTDATA_DIR = os.path.join(THIS_DIR, 'data')
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger()
 
-# Header from ad:IRIS/I212B2H0.fits
-QUERY_HEADER = 'IRIS-I212B2H0.fits.hdr'
+# IRIS 3D spectral cube I212B2H0.fits
+QUERY_HEADER = 'iris-3d-cube.hdr'
 
-# Header from ad:CGPS/CGPS_MA1_HI_line_image.fits
-CUBE_HEADER = 'CGPS-CGPS_MA1_HI_line_image.fits.hdr'
+# CGPS 4D cube CGPS_MA1_HI_line_image.fits
+CUBE_HEADER = 'cgps-4d-cube.hdr'
 
-# Header from ad:MACHO/cal000400r.fits.fz
-NAMED_PART_HEADER = 'MACHO-cal000400r.fits.fz.hdr'
+# MACHO image cal000400r.fits.fz
+NAMED_PART_HEADER = 'macho-image.hdr'
 
-# Header from ad:CFHT/1598392i.fits.gz
-TILED_CHUNK_HEADER = 'CFHT-1598392i.fits.gz.hdr'
+# CFHT image 1598392i.fits.gz
+TILED_CHUNK_HEADER = 'cfht-image-1.hdr'
 
-# Header from ad:CFHT/1598421p.fits.gz
-TILED_MULTICHUNK_HEADER = 'CFHT-1598421p.fits.gz.hdr'
+# CFHT image 1598421p.fits.gz
+TILED_MULTICHUNK_HEADER = 'cfht-image-2.hdr'
 
 
 # @pytest.mark.skip
@@ -106,7 +106,7 @@ def test_circle():
     coords = [140.0, 0.0, 0.1]
 
     test_subject = Transform()
-    pixels = test_subject.get_circle_cutout_pixels(coords, header, 1, 2)
+    pixels = test_subject.get_circle_cutout_pixels(header, 1, 2, coords)
 
     # SODA returns [0][271:279,254:262,*]
     assert pixels is not None
@@ -126,7 +126,7 @@ def test_polygon():
     coords = [139.9, 0.1, 140.1, 0.1, 140.1, -0.1, 139.9, -0.1]
 
     test_subject = Transform()
-    pixels = test_subject.get_polygon_cutout_pixels(coords, header, 1, 2)
+    pixels = test_subject.get_polygon_cutout_pixels(header, 1, 2, coords)
 
     # SODA returns [0][271:279,254:262,*]
     assert pixels is not None
@@ -147,7 +147,7 @@ def test_interval_polygon():
     coords = [139.9, -0.1, 140.1, -0.1, 140.1, 0.1, 139.9, 0.1]
 
     test_subject = Transform()
-    pixels = test_subject.get_polygon_cutout_pixels(coords, header, 1, 2)
+    pixels = test_subject.get_polygon_cutout_pixels(header, 1, 2, coords)
     # should fail
     assert pixels is None
 
@@ -178,9 +178,9 @@ def do_pos_circle(circle):
     assert shape[0] == Shape.CIRCLE
     coordinates = shape[1]
     assert len(coordinates) == 3
-    assert coordinates[0] == 140.0
-    assert coordinates[1] == 0.0
-    assert coordinates[2] == 0.1
+    assert coordinates[0] == '140'
+    assert coordinates[1] == '0'
+    assert coordinates[2] == '0.1'
 
 
 # @pytest.mark.skip
@@ -192,7 +192,7 @@ def test_circle_no_overlap():
 
     test_subject = Transform()
     try:
-        pixels = test_subject.get_circle_cutout_pixels(coords, header, 1, 2)
+        pixels = test_subject.get_circle_cutout_pixels(header, 1, 2, coords)
         assert False, 'Should raise NoContentError.'
     except NoContentError:
         assert True
@@ -229,7 +229,7 @@ def test_band():
     coords = [211.0e-3, 211.05e-3]
 
     test_subject = Transform()
-    pixels = test_subject.get_energy_cutout_pixels(coords, header, 3)
+    pixels = test_subject.get_energy_cutout_pixels(header, 3, coords)
     assert pixels is not None
     assert len(pixels) == 2
     # SODA returns [0][*,*,91:177,*]
@@ -247,7 +247,7 @@ def test_band_no_overlap():
 
     test_subject = Transform()
     try:
-        pixels = test_subject.get_energy_cutout_pixels(coords, header, 3)
+        pixels = test_subject.get_energy_cutout_pixels(header, 3, coords)
         assert False, 'Should raise NoContentError'
     except NoContentError as e:
         assert isinstance(e, NoContentError)
@@ -283,7 +283,7 @@ def test_band_tiled_chunk():
     coords = [371.0e-9, 372.0e-9]
 
     test_subject = Transform()
-    pixels = test_subject.get_energy_cutout_pixels(coords, header, 3)
+    pixels = test_subject.get_energy_cutout_pixels(header, 3, coords)
     assert pixels is not None
     assert len(pixels) == 2
     # SODA returns [0][1:2724,1:2]
@@ -297,10 +297,10 @@ def test_band_tiled_multi_chunk():
     header_filename = os.path.join(TESTDATA_DIR, TILED_MULTICHUNK_HEADER)
     header = fits.Header.fromtextfile(header_filename)
 
-    cutout = [371.0e-9, 372.0e-9]
+    coords = [371.0e-9, 372.0e-9]
 
     test_subject = Transform()
-    pixels = test_subject.get_energy_cutout_pixels(cutout, header, 3)
+    pixels = test_subject.get_energy_cutout_pixels(header, 3, coords)
     assert pixels is not None
     assert len(pixels) == 2
     # SODA returns [0][1:2724,1:3]
