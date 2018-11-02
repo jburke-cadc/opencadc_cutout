@@ -79,6 +79,8 @@ from astropy.wcs import Sip
 from astropy.nddata.utils import extract_array
 from .no_content_error import NoContentError
 
+__all__ = ['CutoutResult', 'CutoutND']
+
 
 class CutoutResult(object):
     """

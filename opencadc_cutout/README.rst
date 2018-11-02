@@ -26,7 +26,7 @@ Perform a cutout of a file using the ``cfitsio`` cutout string format.
        import tempfile
        from opencadc_cutout import OpenCADCCutout
 
-       cutout = OpenCADCCutout()
+       test_subject = OpenCADCCutout()
        output_file = tempfile.mkstemp(suffix='.fits')
        input_file = '/path/to/file.fits'
 
@@ -36,8 +36,6 @@ Perform a cutout of a file using the ``cfitsio`` cutout string format.
        # Needs to have 'append' flag set.  The cutout() method will write out the data.
        with open(output_file, 'ab+') as output_writer, open(input_file, 'rb') as input_reader:
            test_subject.cutout(input_reader, output_writer, cutout_region_string, 'FITS')
-           output_writer.close()
-           input_reader.close()
 
 Example 2 (CADC)
 ~~~~~~~~~~~~~~~~
@@ -50,7 +48,7 @@ Perform a cutout from an input stream from an HTTP request.
        from opencadc_cutout import OpenCADCCutout
        from cadcdata import CadcDataClient
 
-       cutout = OpenCADCCutout()
+       test_subject = OpenCADCCutout()
        anonSubject = net.Subject()
        data_client = CadcDataClient(anonSubject)
        output_file = tempfile.mkstemp(suffix='.fits')
@@ -64,8 +62,6 @@ Perform a cutout from an input stream from an HTTP request.
        # Needs to have 'append' flag set.  The cutout() method will write out the data.
        with open(output_file, 'ab+') as output_writer:
            test_subject.cutout(input_stream, output_writer, cutout_region_string, 'FITS')
-           output_writer.close()
-           input_stream.close()
 
 Testing
 -------

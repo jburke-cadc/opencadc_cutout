@@ -14,11 +14,9 @@ import distutils.cmd
 import distutils.log
 import subprocess
 
-# read the README.md file and return as string.
-
-
+# read the README.rst file and return as string.
 def readme():
-    with open('README.md') as r_obj:
+    with open('README.rst') as r_obj:
         return r_obj.read()
 
 

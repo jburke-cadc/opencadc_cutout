@@ -72,9 +72,10 @@ import signal
 import sys
 import os
 
-from .file_helper import FileHelperFactory
-from .pixel_range_input_parser import PixelRangeInputParser
+from opencadc_cutout.file_helper import FileHelperFactory
+from opencadc_cutout.pixel_range_input_parser import PixelRangeInputParser
 
+__all__ = ['OpenCADCCutout']
 
 class OpenCADCCutout(object):
     """
