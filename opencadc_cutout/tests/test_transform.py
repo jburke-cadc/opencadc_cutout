@@ -123,6 +123,20 @@ def test_axis_type():
 def test_parse_world_to_shapes():
     test_subject = Transform
 
+    cutout = "CIRCLE=1.0+2.0+3.0&CIRCLE=4.0+5.0+6.0"
+    try:
+        shapes = test_subject.parse_world_to_shapes(cutout)
+        assert False, 'Should raise ValueError'
+    except ValueError:
+        assert True
+
+    cutout = "CIRCLE=1.0+2.0+3.0&CIRCLE="
+    try:
+        shapes = test_subject.parse_world_to_shapes(cutout)
+        assert False, 'Should raise ValueError'
+    except ValueError:
+        assert True
+
     cutout = "CIRCLE=1.0 2.0 3.0"
     shapes = test_subject.parse_world_to_shapes(cutout)
     assert len(shapes) == 1
@@ -170,17 +184,16 @@ def test_parse_world_to_shapes():
     assert coordinates[0] == '1.0'
     assert coordinates[1] == '2.0'
 
-    cutout = "POL=LL XX"
+    cutout = "POL=LL"
     shapes = test_subject.parse_world_to_shapes(cutout)
     assert len(shapes) == 1
     shape = shapes[0]
     assert shape[0] == Shape.POL
     coordinates = shape[1]
-    assert len(coordinates) == 2
+    assert len(coordinates) == 1
     assert coordinates[0] == 'LL'
-    assert coordinates[1] == 'XX'
 
-    cutout = "CIRCLE=1.0 2.0 3.0&POLYGON=1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0&BAND=1.0 2.0&TIME=1.0 2.0&POL=LL XX"
+    cutout = "CIRCLE=1.0 2.0 3.0&POLYGON=1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0&BAND=1.0 2.0&TIME=1.0 2.0&POL=LL"
     shapes = test_subject.parse_world_to_shapes(cutout)
     assert len(shapes) == 5
     shape = shapes[0]
@@ -221,9 +234,8 @@ def test_parse_world_to_shapes():
     shape = shapes[4]
     assert shape[0] == Shape.POL
     coordinates = shape[1]
-    assert len(coordinates) == 2
+    assert len(coordinates) == 1
     assert coordinates[0] == 'LL'
-    assert coordinates[1] == 'XX'
 
 
 # @pytest.mark.skip
@@ -384,7 +396,7 @@ def test_get_energy_cutout_pixels_jcmt():
 # @pytest.mark.skip
 def test_get_polarization_cutout_pixels_vlass():
     """
-    Polarization states are I, Q, U, V (1, 2, 3, 4)
+    Polarization states for header are I, Q, U, V (1, 2, 3, 4)
     """
     header_filename = os.path.join(TESTDATA_DIR, VLASS_4D_CUBE_HEADER)
     header = fits.Header.fromtextfile(header_filename)

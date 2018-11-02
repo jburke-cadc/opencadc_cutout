@@ -329,6 +329,10 @@ class Transform(object):
             # split the parameter into a key value pair
             key_values = parameter.split('=')
 
+            # each parameter must have a key value pair
+            if len(key_values) != 2:
+                raise ValueError('Query parameter must be a key value pair {}'.format(parameter))
+
             # check for duplicate keys
             key = key_values[0].upper()
             if key not in keys:
