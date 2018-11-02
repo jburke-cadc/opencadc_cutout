@@ -515,14 +515,20 @@ class Transform(object):
 
         # must have minimum of one polarization state
         if not states:
-            raise ValueError('Polarization requires at least one state')
+            raise ValueError('A polarization cutout requires at least one state')
 
         crval = header.get('CRVAL{}'.format(naxis))
         crpix = header.get('CRPIX{}'.format(naxis))
         cdelt = header.get('CDELT{}'.format(naxis))
 
+        if not crval and not crpix and not cdelt:
+            raise ValueError('Unable to do a polarization cutout, incomplete WCS, missing one of {} {} {}'
+                             .format('CRVAL{}'.format(naxis), 'CRPIX{}'.format(naxis), 'CDELT{}'.format(naxis)))
+
         # polarization states in the file
         wcs_states = self.get_wcs_polarization_states(header, naxis)
+        if not wcs_states:
+            raise NoContentError('Polarization states not found in the FITS header')
 
         # list of states in both the cutout query and header
         cutout_states = []
@@ -533,8 +539,8 @@ class Transform(object):
 
         # no overlap, raise NoContentError
         if not cutout_states:
-            error = ''
-            raise NoContentError(error)
+            raise NoContentError('No polarization states in the query {} match the states in the FITS header {}'
+                                 .format(str(states), str(wcs_states)))
 
         # calculate pixels for the states to cutout
         pix1 = sys.maxsize
