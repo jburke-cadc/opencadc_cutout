@@ -319,9 +319,6 @@ class Transform(object):
         # clean up query string and split the query parameters into a list
         query = world_query.strip().replace('+', ' ').split('&')
 
-        # throwaway list to check for duplicate keys in the query parameters
-        keys = []
-
         # parse the query into a list of parameter keys and values
         shapes = []
         for parameter in query:
@@ -333,18 +330,24 @@ class Transform(object):
             if len(key_values) != 2:
                 raise ValueError('Query parameter must be a key value pair {}'.format(parameter))
 
-            # check for duplicate keys
-            key = key_values[0].upper()
-            if key not in keys:
-                keys.append(key)
-            else:
-                raise ValueError('Duplicate query parameter key {} in {}'.format(key, query))
-
             # Shape enum of the parameter key
+            key = key_values[0].upper()
             try:
                 shape = Shape(key)
             except KeyError:
                 raise ValueError('Unknown query parameter key {} in {}'.format(key, query))
+
+            # check for duplicate keys
+            shape_keys = [i[0] for i in shapes]
+
+            # multiple polarization states denote a range, still a single cutout
+            if shape in shape_keys and shape is not Shape.POL:
+                raise ValueError('Duplicate query parameter key {} in {}'.format(key, query))
+
+            # circle and polygon are both spatial, only one can be given
+            if shape == Shape.CIRCLE or shape == Shape.POLYGON:
+                if Shape.CIRCLE in shape_keys or Shape.POLYGON in shape_keys:
+                    raise ValueError('Duplicate query parameter key {} in {}'.format(key, query))
 
             # split the parameter values into a values list
             values = key_values[1].split()
@@ -497,11 +500,7 @@ class Transform(object):
         :return: List[int] The two cutout pixel coordinates
         """
 
-        # temporal bounds must have lower and upper values
-        if not bounds:
-            raise ValueError('Time requires 2 parameters, found {}'.format(bounds))
-
-        return []
+        raise ValueError('Temporal cutouts not supported')
 
     def get_polarization_cutout_pixels(self, header, naxis, states):
         """
